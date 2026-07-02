@@ -5,6 +5,8 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import xaero.map.graphics.MapRenderHelper;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import name.modid.UpdateShareStatusPayload;
 
 public class ConfigScreen extends Screen {
     private final Screen ecranPrecedent; // Pour pouvoir retourner sur la carte en quittant
@@ -50,12 +52,26 @@ public class ConfigScreen extends Screen {
                         .build()
         );
 
+        // Bouton 3 : Partager ma position (OUI/NON)
+        this.addRenderableWidget(
+                Button.builder(getTexteBoutonPartage(), bouton -> {
+                            ModConfig.INSTANCE.sharePosition = !ModConfig.INSTANCE.sharePosition;
+                            ModConfig.INSTANCE.sauvegarder();
+                            bouton.setMessage(getTexteBoutonPartage());
+
+                            // On envoie instantanément la nouvelle décision au serveur !
+                            ClientPlayNetworking.send(new UpdateShareStatusPayload(ModConfig.INSTANCE.sharePosition));
+                        })
+                        .bounds(centreX - 100, centreY + 20, 200, 20) // Ajuste la position Y (centreY + 20)
+                        .build()
+        );
+
         // Bouton 3 : Retour
         this.addRenderableWidget(
                 Button.builder(Component.literal("Back"), bouton -> {
                             this.minecraft.gui.setScreen(this.ecranPrecedent); // On ferme le menu
                         })
-                        .bounds(centreX - 100, centreY + 30, 200, 20)
+                        .bounds(centreX - 100, centreY + 60, 200, 20)
                         .build()
         );
     }
@@ -67,5 +83,9 @@ public class ConfigScreen extends Screen {
 
     private Component getTexteBoutonNoms() {
         return Component.literal("Names : " + (ModConfig.INSTANCE.showNames ? "§aYES" : "§cNO"));
+    }
+
+    private Component getTexteBoutonPartage() {
+        return Component.literal("Share my position : " + (ModConfig.INSTANCE.sharePosition ? "§aYES" : "§cNO"));
     }
 }

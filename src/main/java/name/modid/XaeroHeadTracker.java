@@ -9,6 +9,8 @@ import net.minecraft.server.level.ServerPlayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 public class XaeroHeadTracker implements ModInitializer {
@@ -17,20 +19,36 @@ public class XaeroHeadTracker implements ModInitializer {
 
 	private int compteurTemps = 0;
 
+	// La "Blacklist" des UUID des joueurs qui refusent de partager leur position
+	public static final Set<UUID> joueursCaches = new HashSet<>();
+
 	@Override
 	public void onInitialize() {
-		LOGGER.info("Le XaeroHeadTracker s'allume avec succès !");
-
-		// 1. LA DÉCLARATION : On prévient le serveur que notre "TYPE" de paquet existe sur le réseau
+		// 1. Déclarations S2C et C2S
 		PayloadTypeRegistry.clientboundPlay().register(PlayerPositionPayload.TYPE, PlayerPositionPayload.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(UpdateShareStatusPayload.TYPE, UpdateShareStatusPayload.CODEC);
 
+		// 2. Écouteur C2S : Quand un client change ses paramètres
+		ServerPlayNetworking.registerGlobalReceiver(UpdateShareStatusPayload.TYPE, (payload, context) -> {
+			UUID uuidJoueur = context.player().getUUID();
+			if (payload.isSharing()) {
+				joueursCaches.remove(uuidJoueur); // Il veut partager, on le retire de la blacklist
+			} else {
+				joueursCaches.add(uuidJoueur); // Il se cache, on l'ajoute
+			}
+		});
+
+		// 3. Boucle de diffusion
 		ServerTickEvents.END_SERVER_TICK.register(server -> {
 			compteurTemps++;
-
 			if (compteurTemps >= 20) {
 				compteurTemps = 0;
 
 				for (ServerPlayer joueur : server.getPlayerList().getPlayers()) {
+					// L'ASTUCE EST ICI : Si le joueur est dans la liste des cachés, on saute son tour !
+					if (joueursCaches.contains(joueur.getUUID())) {
+						continue;
+					}
 
 					String pseudo = joueur.getName().getString();
 					UUID uuid = joueur.getUUID();
@@ -38,19 +56,13 @@ public class XaeroHeadTracker implements ModInitializer {
 					double y = joueur.getY();
 					double z = joueur.getZ();
 
-					// 2. L'EMBALLAGE : On met nos variables dans notre paquet
 					PlayerPositionPayload paquet = new PlayerPositionPayload(pseudo, uuid, x, y, z);
 
-					// 3. L'ENVOI : On balance la trame sur le réseau à tous les joueurs connectés
 					for (ServerPlayer destinataire : server.getPlayerList().getPlayers()) {
 						ServerPlayNetworking.send(destinataire, paquet);
 					}
 				}
 			}
 		});
-	}
-
-	public static Identifier id(String path) {
-		return Identifier.fromNamespaceAndPath(MOD_ID, path);
 	}
 }

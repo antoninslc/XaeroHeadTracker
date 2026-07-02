@@ -24,6 +24,7 @@ public class ModConfig {
     // 3. Tes variables de configuration
     public boolean showHeads = true;
     public boolean showNames = true;
+    public boolean sharePosition = true;
 
     // 4. La méthode pour lire le fichier au lancement
     public void charger() {
@@ -34,6 +35,7 @@ public class ModConfig {
 
                 this.showHeads = donnees.showHeads;
                 this.showNames = donnees.showNames;
+                this.sharePosition = donnees.sharePosition;
 
                 lecteur.close();
             } else {
