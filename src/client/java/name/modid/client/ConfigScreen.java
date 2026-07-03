@@ -12,7 +12,8 @@ public class ConfigScreen extends Screen {
     private final Screen ecranPrecedent; // Pour pouvoir retourner sur la carte en quittant
 
     public ConfigScreen(Screen ecranPrecedent) {
-        super(Component.literal("XaeroHeadTracker Configuration"));
+        // Le jeu ira chercher le texte en anglais ou en français selon les paramètres du joueur
+        super(Component.translatable("gui.xaeroheadtracker.title"));
         this.ecranPrecedent = ecranPrecedent;
     }
 
@@ -67,8 +68,9 @@ public class ConfigScreen extends Screen {
         );
 
         // Bouton 3 : Retour
+        // Bouton 3 : Retour
         this.addRenderableWidget(
-                Button.builder(Component.literal("Back"), bouton -> {
+                Button.builder(Component.translatable("gui.xaeroheadtracker.back"), bouton -> {
                             this.minecraft.gui.setScreen(this.ecranPrecedent); // On ferme le menu
                         })
                         .bounds(centreX - 100, centreY + 60, 200, 20)
@@ -76,16 +78,24 @@ public class ConfigScreen extends Screen {
         );
     }
 
-    // Petites méthodes pour générer le texte dynamiquement selon l'état de la config
     private Component getTexteBoutonTetes() {
-        return Component.literal("Heads : " + (ModConfig.INSTANCE.showHeads ? "§aYES" : "§cNO"));
+        Component etat = ModConfig.INSTANCE.showHeads
+                ? Component.literal("§a").append(Component.translatable("gui.xaeroheadtracker.yes"))
+                : Component.literal("§c").append(Component.translatable("gui.xaeroheadtracker.no"));
+        return Component.translatable("gui.xaeroheadtracker.heads").append(etat);
     }
 
     private Component getTexteBoutonNoms() {
-        return Component.literal("Names : " + (ModConfig.INSTANCE.showNames ? "§aYES" : "§cNO"));
+        Component etat = ModConfig.INSTANCE.showNames
+                ? Component.literal("§a").append(Component.translatable("gui.xaeroheadtracker.yes"))
+                : Component.literal("§c").append(Component.translatable("gui.xaeroheadtracker.no"));
+        return Component.translatable("gui.xaeroheadtracker.names").append(etat);
     }
 
     private Component getTexteBoutonPartage() {
-        return Component.literal("Share my position : " + (ModConfig.INSTANCE.sharePosition ? "§aYES" : "§cNO"));
+        Component etat = ModConfig.INSTANCE.sharePosition
+                ? Component.literal("§a").append(Component.translatable("gui.xaeroheadtracker.yes"))
+                : Component.literal("§c").append(Component.translatable("gui.xaeroheadtracker.no"));
+        return Component.translatable("gui.xaeroheadtracker.share").append(etat);
     }
 }

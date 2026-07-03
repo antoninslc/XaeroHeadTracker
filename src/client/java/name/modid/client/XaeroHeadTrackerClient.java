@@ -35,6 +35,9 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.KeyMapping;
 import org.lwjgl.glfw.GLFW;
 
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import name.modid.UpdateShareStatusPayload;
+
 public class XaeroHeadTrackerClient implements ClientModInitializer {
 
 	public static final Map<String, PositionData> positionsJoueurs = new HashMap<>();
@@ -51,6 +54,12 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 	public void onInitializeClient() {
 
 		ModConfig.INSTANCE.charger();
+
+		// Dès qu'on rejoint un serveur (ou un monde solo), on annonce notre choix !
+		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+			// On utilise la valeur qui a été chargée depuis le JSON
+			ClientPlayNetworking.send(new UpdateShareStatusPayload(ModConfig.INSTANCE.sharePosition));
+		});
 
 		// 1. On crée et on enregistre le raccourci (avec KeyMappingHelper !)
 		toucheParametres = KeyMappingHelper.registerKeyMapping(new KeyMapping(
@@ -94,6 +103,13 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 						double cameraZ = accessor.getCameraZ();
 						double scale = accessor.getScale();
 						double screenScale = accessor.getScreenScale();
+						long tempsActuel = System.currentTimeMillis();
+
+						// Le grand nettoyage : on supprime tous ceux dont le timestamp est plus vieux que 120 minutes
+						// (120 min * 60 sec * 1000 millisecondes)
+						positionsJoueurs.entrySet().removeIf(entree ->
+								(tempsActuel - entree.getValue().timestamp) > 120 * 60 * 1000L
+						);
 
 						Minecraft client = Minecraft.getInstance();
 
@@ -138,6 +154,46 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 												-1,
 												0.0F, 0.0F, 0.0F, 0.4F
 										);
+
+										// 2. On calcule le temps exact écoulé en millisecondes
+										long msEcoulees = tempsActuel - pos.timestamp;
+										long minutesEcoulees = msEcoulees / 60000L;
+
+										// 3. On choisit le texte et la couleur
+										String texteStatut;
+										if (msEcoulees <= 4000) {
+											// Si la donnée a moins de 4 secondes (tolérance réseau incluse)
+											texteStatut = "§aLive";
+										} else if (minutesEcoulees < 1) {
+											// Entre 4 secondes et 59 secondes
+											texteStatut = "§7< 1 min";
+										} else {
+											// 1 minute et plus
+											texteStatut = "§7" + minutesEcoulees + " min";
+										}
+
+										// 4. On dessine le statut (en dessous de la tête) AVEC ÉCHELLE RÉDUITE
+										float echelle = 0.7F; // 70% de la taille normale
+
+										// Nouvelle méthode 1.21.4 : on sauvegarde la matrice 2D
+										guiGraphics.pose().pushMatrix();
+
+										// On rétrécit tout de 70% (Uniquement X et Y, l'axe Z a disparu !)
+										guiGraphics.pose().scale(echelle, echelle);
+
+										// L'astuce mathématique pour garder la bonne position
+										int cibleX = (int) (drawX / echelle);
+										int cibleY = (int) ((drawY + headSize / 2 + 2) / echelle);
+
+										MapRenderHelper.drawCenteredStringWithBackground(
+												guiGraphics, client.font, texteStatut,
+												cibleX, cibleY,
+												-1,
+												0.0F, 0.0F, 0.0F, 0.4F
+										);
+
+										// Nouvelle méthode 1.21.4 : on restaure la matrice normale
+										guiGraphics.pose().popMatrix();
 									}
 								} else {
 									guiGraphics.fill((int) drawX - 3, (int) drawY - 3, (int) drawX + 3, (int) drawY + 3, 0xFFFF0000);
@@ -192,8 +248,11 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 	public static class PositionData {
 		public double x, y, z;
 		public UUID uuid;
+		public long timestamp; // L'heure de réception en millisecondes
+
 		public PositionData(double x, double y, double z, UUID uuid) {
 			this.x = x; this.y = y; this.z = z; this.uuid = uuid;
+			this.timestamp = System.currentTimeMillis(); // On enregistre l'heure actuelle !
 		}
 	}
 }

@@ -1,0 +1,10 @@
+{
+  "key.category.xaeroheadtracker.parametres": "XaeroHeadTracker",
+  "gui.xaeroheadtracker.title": "Head Tracker Settings",
+  "gui.xaeroheadtracker.heads": "Heads: ",
+  "gui.xaeroheadtracker.names": "Names: ",
+  "gui.xaeroheadtracker.share": "Share my position: ",
+  "gui.xaeroheadtracker.back": "Back",
+  "gui.xaeroheadtracker.yes": "Yes",
+  "gui.xaeroheadtracker.no": "No"
+}
