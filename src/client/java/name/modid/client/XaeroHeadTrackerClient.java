@@ -63,9 +63,9 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 
 		// 1. On crée et on enregistre le raccourci (avec KeyMappingHelper !)
 		toucheParametres = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-				"Paramètres Head Tracker",
+				"key.xaeroheadtracker.open_settings", // La clé magique est ici
 				GLFW.GLFW_KEY_H,
-				CATEGORIE_MOD // On utilise l'objet Catégorie créé plus haut
+				CATEGORIE_MOD
 		));
 
 		// 2. On écoute en permanence (à chaque "tick" du jeu) si la touche est pressée
@@ -238,7 +238,8 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 				};
 
 				// On attache l'infobulle officielle de Minecraft au bouton
-				boutonOeil.setTooltip(Tooltip.create(Component.literal("Head Tracker Settings")));
+				// On utilise translatable pour charger la clé du fichier JSON !
+				boutonOeil.setTooltip(Tooltip.create(Component.translatable("key.xaeroheadtracker.open_settings")));
 
 				Screens.getWidgets(screen).add(boutonOeil);
 			}

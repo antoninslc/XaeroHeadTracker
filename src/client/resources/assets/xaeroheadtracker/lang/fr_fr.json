@@ -6,5 +6,6 @@
   "gui.xaeroheadtracker.share": "Partager ma position : ",
   "gui.xaeroheadtracker.back": "Retour",
   "gui.xaeroheadtracker.yes": "Oui",
-  "gui.xaeroheadtracker.no": "Non"
+  "gui.xaeroheadtracker.no": "Non",
+  "key.xaeroheadtracker.open_settings": "Paramètres Head Tracker"
 }
