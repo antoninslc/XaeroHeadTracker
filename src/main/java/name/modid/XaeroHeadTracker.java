@@ -56,7 +56,11 @@ public class XaeroHeadTracker implements ModInitializer {
 					double y = joueur.getY();
 					double z = joueur.getZ();
 
-					PlayerPositionPayload paquet = new PlayerPositionPayload(pseudo, uuid, x, y, z);
+					// CORRECTION 1 : On utilise level() au lieu de serverLevel()
+					String dimensionJoueur = joueur.level().dimension().identifier().toString();
+
+					// CORRECTION 2 : On passe bien la variable dimensionJoueur à la toute fin !
+					PlayerPositionPayload paquet = new PlayerPositionPayload(pseudo, uuid, x, y, z, dimensionJoueur);
 
 					for (ServerPlayer destinataire : server.getPlayerList().getPlayers()) {
 						ServerPlayNetworking.send(destinataire, paquet);

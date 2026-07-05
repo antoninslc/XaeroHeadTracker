@@ -38,10 +38,12 @@ import org.lwjgl.glfw.GLFW;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import name.modid.UpdateShareStatusPayload;
 
+import net.fabricmc.loader.api.FabricLoader;
+
 public class XaeroHeadTrackerClient implements ClientModInitializer {
 
 	public static final Map<String, PositionData> positionsJoueurs = new HashMap<>();
-
+	public static boolean isMinimapInstalled = false;
 	// 1. On déclare officiellement notre propre catégorie dans les paramètres du jeu
 	private static final KeyMapping.Category CATEGORIE_MOD = KeyMapping.Category.register(Identifier.fromNamespaceAndPath("xaeroheadtracker", "parametres"));
 
@@ -54,6 +56,10 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 	public void onInitializeClient() {
 
 		ModConfig.INSTANCE.charger();
+
+		// On demande à Fabric si l'un des deux mods Minimap de Xaero est présent dans le dossier mods
+		isMinimapInstalled = FabricLoader.getInstance().isModLoaded("xaerominimap")
+				|| FabricLoader.getInstance().isModLoaded("xaerominimapfair");
 
 		// Dès qu'on rejoint un serveur (ou un monde solo), on annonce notre choix !
 		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
@@ -71,10 +77,10 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 		// 2. On écoute en permanence (à chaque "tick" du jeu) si la touche est pressée
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			while (toucheParametres.consumeClick()) {
-				if (client.gui.screen() == null) {
-					client.gui.setScreen(new ConfigScreen(null));
-				} else if (client.gui.screen().getClass().getName().contains("GuiMap")) {
-					client.gui.setScreen(new ConfigScreen(client.gui.screen()));
+				if (client.screen == null) {
+					client.setScreen(new ConfigScreen(null));
+				} else if (client.screen.getClass().getName().contains("GuiMap")) {
+					client.setScreen(new ConfigScreen(client.screen));
 				}
 			}
 		});
@@ -85,7 +91,20 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 			double x = payload.x();
 			double y = payload.y();
 			double z = payload.z();
-			positionsJoueurs.put(pseudo, new PositionData(x, y, z, uuid));
+			String dimension = payload.dimension();
+
+			// L'ASTUCE : Si le joueur est déjà dans notre liste, on met juste à jour ses infos
+			PositionData posExistante = positionsJoueurs.get(pseudo);
+			if (posExistante != null) {
+				posExistante.x = x;
+				posExistante.y = y;
+				posExistante.z = z;
+				posExistante.dimension = dimension;
+				posExistante.timestamp = System.currentTimeMillis();
+			} else {
+				// C'est un nouveau joueur, on l'ajoute
+				positionsJoueurs.put(pseudo, new PositionData(x, y, z, uuid, dimension));
+			}
 		});
 
 		ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) -> {
@@ -113,32 +132,63 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 
 						Minecraft client = Minecraft.getInstance();
 
-						for (Map.Entry<String, PositionData> entree : positionsJoueurs.entrySet()) {
-							PositionData pos = entree.getValue();
+						// NOUVEAU : On regarde dans quelle dimension on est actuellement
+						String maDimension = client.level != null ? client.level.dimension().identifier().toString() : "";
 
-							// L'ASTUCE EST ICI : On ignore le joueur si c'est nous-même
-							if (client.player != null && pos.uuid.equals(client.player.getUUID())) {
-								continue; // On passe au joueur suivant de la liste sans rien dessiner
+						// La bonne boucle avec le bon type (String) et la bonne liste (positionsJoueurs)
+						for (Map.Entry<String, PositionData> entree : positionsJoueurs.entrySet()) {
+
+							// On extrait les variables correctement
+							String pseudo = entree.getKey();
+							PositionData pos = entree.getValue();
+							UUID uuidJoueur = pos.uuid;
+
+							// NOUVELLE CONDITION : On ignore le joueur s'il n'est pas dans NOTRE dimension
+							if (!pos.dimension.equals(maDimension)) {
+								continue;
 							}
 
+							// NOUVELLE CONDITION SÉCURISÉE :
+							if (isMinimapInstalled && client.level != null && client.level.getPlayerByUUID(uuidJoueur) != null) {
+								continue; // La Minimap gère ce joueur, on passe au suivant
+							}
+
+							// L'ASTUCE EST ICI : On ignore le joueur si c'est nous-même
+							if (client.player != null && uuidJoueur.equals(client.player.getUUID())) {
+								continue; // On passe au joueur suivant sans rien dessiner
+							}
+
+							// Calcul de la position sur l'écran
 							double drawX = screen.width / 2.0 + (pos.x - cameraX) * scale / screenScale;
 							double drawY = screen.height / 2.0 + (pos.z - cameraZ) * scale / screenScale;
 
+							// Si le joueur est visible sur l'écran
 							if (drawX > 0 && drawX < screen.width && drawY > 0 && drawY < screen.height) {
 								int headSize = 8; // taille d'affichage à l'écran, en pixels GUI
 
 								PlayerInfo info = client.getConnection() != null
-										? client.getConnection().getPlayerInfo(pos.uuid)
+										? client.getConnection().getPlayerInfo(uuidJoueur)
 										: null;
 
-								if (info != null) {
-									if (ModConfig.INSTANCE.showHeads) {
-										PlayerSkin skin = info.getSkin();
-										Identifier skinTexture = skin.body().texturePath();
+								// 1. On essaie d'obtenir la peau
+								Identifier skinTextureToUse = null;
 
+								if (info != null) {
+									// Le joueur est en ligne, on capture sa vraie peau et on la SAUVEGARDE
+									skinTextureToUse = info.getSkin().body().texturePath();
+									pos.texturePeau = skinTextureToUse;
+								} else {
+									// Le joueur est déconnecté, on utilise notre sauvegarde !
+									skinTextureToUse = pos.texturePeau;
+								}
+
+								// 2. Si on a trouvé une peau (soit en ligne, soit via notre sauvegarde)
+								if (skinTextureToUse != null) {
+
+									if (ModConfig.INSTANCE.showHeads) {
 										guiGraphics.blit(
 												RenderPipelines.GUI_TEXTURED,
-												skinTexture,
+												skinTextureToUse,
 												(int) drawX - headSize / 2, (int) drawY - headSize / 2,
 												8.0F, 8.0F,
 												headSize, headSize,
@@ -147,7 +197,6 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 									}
 
 									if (ModConfig.INSTANCE.showNames) {
-										String pseudo = entree.getKey();
 										MapRenderHelper.drawCenteredStringWithBackground(
 												guiGraphics, client.font, pseudo,
 												(int) drawX, (int) drawY - headSize / 2 - 10,
@@ -155,33 +204,24 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 												0.0F, 0.0F, 0.0F, 0.4F
 										);
 
-										// 2. On calcule le temps exact écoulé en millisecondes
+										// On calcule le temps
 										long msEcoulees = tempsActuel - pos.timestamp;
 										long minutesEcoulees = msEcoulees / 60000L;
 
-										// 3. On choisit le texte et la couleur
 										String texteStatut;
 										if (msEcoulees <= 4000) {
-											// Si la donnée a moins de 4 secondes (tolérance réseau incluse)
 											texteStatut = "§aLive";
 										} else if (minutesEcoulees < 1) {
-											// Entre 4 secondes et 59 secondes
 											texteStatut = "§7< 1 min";
 										} else {
-											// 1 minute et plus
 											texteStatut = "§7" + minutesEcoulees + " min";
 										}
 
-										// 4. On dessine le statut (en dessous de la tête) AVEC ÉCHELLE RÉDUITE
-										float echelle = 0.7F; // 70% de la taille normale
-
-										// Nouvelle méthode 1.21.4 : on sauvegarde la matrice 2D
+										// On dessine le statut
+										float echelle = 0.7F;
 										guiGraphics.pose().pushMatrix();
-
-										// On rétrécit tout de 70% (Uniquement X et Y, l'axe Z a disparu !)
 										guiGraphics.pose().scale(echelle, echelle);
 
-										// L'astuce mathématique pour garder la bonne position
 										int cibleX = (int) (drawX / echelle);
 										int cibleY = (int) ((drawY + headSize / 2 + 2) / echelle);
 
@@ -192,10 +232,11 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 												0.0F, 0.0F, 0.0F, 0.4F
 										);
 
-										// Nouvelle méthode 1.21.4 : on restaure la matrice normale
 										guiGraphics.pose().popMatrix();
 									}
 								} else {
+									// Le carré rouge n'apparaîtra QUE si on vient de lancer le jeu
+									// et que le joueur s'est déconnecté avant même qu'on ait pu voir sa peau une seule fois.
 									guiGraphics.fill((int) drawX - 3, (int) drawY - 3, (int) drawX + 3, (int) drawY + 3, 0xFFFF0000);
 								}
 							}
@@ -215,7 +256,7 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 
 					@Override
 					public void onPress(InputWithModifiers input) {
-						client.gui.setScreen(new ConfigScreen(screen));
+						client.setScreen(new ConfigScreen(screen));
 					}
 
 					@Override
@@ -249,11 +290,15 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 	public static class PositionData {
 		public double x, y, z;
 		public UUID uuid;
-		public long timestamp; // L'heure de réception en millisecondes
+		public String dimension;
+		public long timestamp;
+		public Identifier texturePeau; // NOUVEAU : La mémoire de la peau !
 
-		public PositionData(double x, double y, double z, UUID uuid) {
+		public PositionData(double x, double y, double z, UUID uuid, String dimension) {
 			this.x = x; this.y = y; this.z = z; this.uuid = uuid;
-			this.timestamp = System.currentTimeMillis(); // On enregistre l'heure actuelle !
+			this.dimension = dimension;
+			this.timestamp = System.currentTimeMillis();
+			this.texturePeau = null; // Par défaut, on ne l'a pas encore
 		}
 	}
 }
