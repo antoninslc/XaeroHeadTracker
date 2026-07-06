@@ -4,7 +4,7 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,10 +25,13 @@ public class XaeroHeadTracker implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		// 1. Déclarations S2C et C2S
-		PayloadTypeRegistry.clientboundPlay().register(PlayerPositionPayload.TYPE, PlayerPositionPayload.CODEC);
-		PayloadTypeRegistry.serverboundPlay().register(UpdateShareStatusPayload.TYPE, UpdateShareStatusPayload.CODEC);
+		PayloadTypeRegistry.playS2C().register(PlayerPositionPayload.TYPE, PlayerPositionPayload.CODEC);
 
-		// 2. Écouteur C2S : Quand un client change ses paramètres
+// Le client envoie son statut de partage au serveur (C2S = Client To Server)
+		PayloadTypeRegistry.playC2S().register(UpdateShareStatusPayload.TYPE, UpdateShareStatusPayload.CODEC);
+
+
+// 2. Ensuite SEULEMENT, on attache le récepteur côté serveur pour écouter le paquet C2S
 		ServerPlayNetworking.registerGlobalReceiver(UpdateShareStatusPayload.TYPE, (payload, context) -> {
 			UUID uuidJoueur = context.player().getUUID();
 			if (payload.isSharing()) {
@@ -57,7 +60,7 @@ public class XaeroHeadTracker implements ModInitializer {
 					double z = joueur.getZ();
 
 					// CORRECTION 1 : On utilise level() au lieu de serverLevel()
-					String dimensionJoueur = joueur.level().dimension().identifier().toString();
+					String dimensionJoueur = joueur.level().dimension().location().toString();
 
 					// CORRECTION 2 : On passe bien la variable dimensionJoueur à la toute fin !
 					PlayerPositionPayload paquet = new PlayerPositionPayload(pseudo, uuid, x, y, z, dimensionJoueur);

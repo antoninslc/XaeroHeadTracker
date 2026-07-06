@@ -1,5 +1,5 @@
 plugins {
-	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+	id 'fabric-loom' version "${loom_version}"
 	id 'maven-publish'
 }
 
@@ -25,9 +25,12 @@ loom {
 
 dependencies {
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
-	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-	implementation "xaero.map:xaeroworldmap-fabric-26.1.2:1.41.2"
+	mappings loom.officialMojangMappings()
+
+	// Le mot-clé "modImplementation" est vital ici :
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	modImplementation "xaero.map:xaeroworldmap-fabric-1.21.1:${project.xaeroworldmap_version}"
 }
 
 processResources {

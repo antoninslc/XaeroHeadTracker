@@ -11,7 +11,7 @@ import java.nio.file.Path;
 
 import name.modid.XaeroHeadTracker;
 
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 
 public class ModConfig {
     // 1. On crée une instance unique (un Singleton) accessible de partout

@@ -6,21 +6,19 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
-import net.minecraft.client.input.InputWithModifiers;
 import net.minecraft.client.multiplayer.PlayerInfo;
-import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 
 import name.modid.PlayerPositionPayload;
 import name.modid.XaeroHeadTracker;
 
 // L'IMPORT DE LA CARTE XAERO
-import net.minecraft.resources.Identifier;
-import net.minecraft.world.entity.player.PlayerSkin;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.resources.PlayerSkin;
 import xaero.map.gui.GuiMap;
 import xaero.map.graphics.MapRenderHelper;
 
@@ -30,7 +28,7 @@ import java.util.UUID;
 
 import net.minecraft.client.gui.components.AbstractButton;
 
-import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
+import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.KeyMapping;
 import org.lwjgl.glfw.GLFW;
@@ -40,17 +38,18 @@ import name.modid.UpdateShareStatusPayload;
 
 import net.fabricmc.loader.api.FabricLoader;
 
+import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
+
 public class XaeroHeadTrackerClient implements ClientModInitializer {
 
 	public static final Map<String, PositionData> positionsJoueurs = new HashMap<>();
 	public static boolean isMinimapInstalled = false;
 	// 1. On déclare officiellement notre propre catégorie dans les paramètres du jeu
-	private static final KeyMapping.Category CATEGORIE_MOD = KeyMapping.Category.register(Identifier.fromNamespaceAndPath("xaeroheadtracker", "parametres"));
-
+	public static final String CATEGORIE_MOD = "category.xaeroheadtracker.parametres";
 	// 2. Notre raccourci clavier
 	private static KeyMapping toucheParametres;
 
-	private static final Identifier EYE_TEXTURE = Identifier.fromNamespaceAndPath("xaeroheadtracker", "textures/gui/eye.png");
+	private static final ResourceLocation EYE_TEXTURE = ResourceLocation.fromNamespaceAndPath("xaeroheadtracker", "textures/gui/eye.png");
 
 	@Override
 	public void onInitializeClient() {
@@ -68,7 +67,7 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 		});
 
 		// 1. On crée et on enregistre le raccourci (avec KeyMappingHelper !)
-		toucheParametres = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+		toucheParametres = KeyBindingHelper.registerKeyBinding(new KeyMapping(
 				"key.xaeroheadtracker.open_settings", // La clé magique est ici
 				GLFW.GLFW_KEY_H,
 				CATEGORIE_MOD
@@ -114,7 +113,7 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 				AbstractWidget calqueDessin = new AbstractWidget(0, 0, screen.width, screen.height, Component.empty()) {
 
 					@Override
-					protected void extractWidgetRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+					protected void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
 						GuiMap mapScreen = (GuiMap) screen;
 						GuiMapAccessor accessor = (GuiMapAccessor) mapScreen;
 
@@ -133,7 +132,7 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 						Minecraft client = Minecraft.getInstance();
 
 						// NOUVEAU : On regarde dans quelle dimension on est actuellement
-						String maDimension = client.level != null ? client.level.dimension().identifier().toString() : "";
+						String maDimension = client.level != null ? client.level.dimension().location().toString() : "";
 
 						// La bonne boucle avec le bon type (String) et la bonne liste (positionsJoueurs)
 						for (Map.Entry<String, PositionData> entree : positionsJoueurs.entrySet()) {
@@ -171,11 +170,11 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 										: null;
 
 								// 1. On essaie d'obtenir la peau
-								Identifier skinTextureToUse = null;
+								ResourceLocation skinTextureToUse = null;
 
 								if (info != null) {
 									// Le joueur est en ligne, on capture sa vraie peau et on la SAUVEGARDE
-									skinTextureToUse = info.getSkin().body().texturePath();
+									skinTextureToUse = info.getSkin().texture();
 									pos.texturePeau = skinTextureToUse;
 								} else {
 									// Le joueur est déconnecté, on utilise notre sauvegarde !
@@ -187,7 +186,6 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 
 									if (ModConfig.INSTANCE.showHeads) {
 										guiGraphics.blit(
-												RenderPipelines.GUI_TEXTURED,
 												skinTextureToUse,
 												(int) drawX - headSize / 2, (int) drawY - headSize / 2,
 												8.0F, 8.0F,
@@ -201,7 +199,7 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 												guiGraphics, client.font, pseudo,
 												(int) drawX, (int) drawY - headSize / 2 - 10,
 												-1,
-												0.0F, 0.0F, 0.0F, 0.4F
+												0.0F, 0.0F, 0.0F, 0.4F, guiGraphics.bufferSource().getBuffer(net.minecraft.client.renderer.RenderType.gui())
 										);
 
 										// On calcule le temps
@@ -219,8 +217,8 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 
 										// On dessine le statut
 										float echelle = 0.7F;
-										guiGraphics.pose().pushMatrix();
-										guiGraphics.pose().scale(echelle, echelle);
+										guiGraphics.pose().pushPose();
+										guiGraphics.pose().scale(echelle, echelle, 1.0f);
 
 										int cibleX = (int) (drawX / echelle);
 										int cibleY = (int) ((drawY + headSize / 2 + 2) / echelle);
@@ -229,10 +227,10 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 												guiGraphics, client.font, texteStatut,
 												cibleX, cibleY,
 												-1,
-												0.0F, 0.0F, 0.0F, 0.4F
+												0.0F, 0.0F, 0.0F, 0.4F, guiGraphics.bufferSource().getBuffer(net.minecraft.client.renderer.RenderType.gui())
 										);
 
-										guiGraphics.pose().popMatrix();
+										guiGraphics.pose().popPose();
 									}
 								} else {
 									// Le carré rouge n'apparaîtra QUE si on vient de lancer le jeu
@@ -249,25 +247,22 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 					protected void updateWidgetNarration(NarrationElementOutput narrationElementOutput) {}
 				};
 
-				Screens.getWidgets(screen).add(calqueDessin);
+				Screens.getButtons(screen).add(calqueDessin);
 
-				// On passe la taille cliquable à 16x16, et on ajuste un peu X et Y pour l'alignement
+				// 1. On place le bouton en bas à gauche (screen.height - 25) pour éviter les boutons de Xaero
 				AbstractButton boutonOeil = new AbstractButton(7, 32, 16, 16, Component.literal("O")) {
 
 					@Override
-					public void onPress(InputWithModifiers input) {
+					public void onPress() {
 						client.setScreen(new ConfigScreen(screen));
 					}
 
 					@Override
-					protected void extractContents(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
-						// Si la souris est dessus, le décalage est de -1 pixel (vers le haut), sinon 0
+					protected void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
 						int decalageY = this.isHovered() ? -1 : 0;
-
 						guiGraphics.blit(
-								RenderPipelines.GUI_TEXTURED,
 								EYE_TEXTURE,
-								this.getX(), this.getY() + decalageY,  // On ajoute notre décalage ici !
+								this.getX(), this.getY() + decalageY,
 								0.0F, 0.0F,
 								16, 16,
 								16, 16
@@ -278,11 +273,19 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 					protected void updateWidgetNarration(NarrationElementOutput narrationElementOutput) {}
 				};
 
-				// On attache l'infobulle officielle de Minecraft au bouton
-				// On utilise translatable pour charger la clé du fichier JSON !
 				boutonOeil.setTooltip(Tooltip.create(Component.translatable("key.xaeroheadtracker.open_settings")));
+				Screens.getButtons(screen).add(boutonOeil);
 
-				Screens.getWidgets(screen).add(boutonOeil);
+				// 2. L'ASTUCE ULTIME : On passe en priorité absolue pour le clic !
+				ScreenMouseEvents.allowMouseClick(screen).register((ecran, sourisX, sourisY, boutonSouris) -> {
+					// Si on clique sur notre œil, il fait son action et on renvoie "false"
+					// pour interdire à Xaero de traiter ce clic
+					if (boutonOeil.mouseClicked(sourisX, sourisY, boutonSouris)) {
+						return false;
+					}
+					// Sinon, on renvoie "true" pour laisser Xaero glisser sa carte normalement
+					return true;
+				});
 			}
 		});
 	}
@@ -292,7 +295,7 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 		public UUID uuid;
 		public String dimension;
 		public long timestamp;
-		public Identifier texturePeau; // NOUVEAU : La mémoire de la peau !
+		public ResourceLocation texturePeau; // NOUVEAU : La mémoire de la peau !
 
 		public PositionData(double x, double y, double z, UUID uuid, String dimension) {
 			this.x = x; this.y = y; this.z = z; this.uuid = uuid;
