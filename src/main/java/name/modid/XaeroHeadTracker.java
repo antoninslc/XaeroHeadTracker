@@ -1,10 +1,12 @@
 package name.modid;
 
-import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.minecraft.resources.Identifier;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 import net.minecraft.server.level.ServerPlayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,56 +15,71 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
-public class XaeroHeadTracker implements ModInitializer {
+@Mod(XaeroHeadTracker.MOD_ID)
+public class XaeroHeadTracker {
 	public static final String MOD_ID = "xaeroheadtracker";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
 	private int compteurTemps = 0;
-
-	// La "Blacklist" des UUID des joueurs qui refusent de partager leur position
 	public static final Set<UUID> joueursCaches = new HashSet<>();
 
-	@Override
-	public void onInitialize() {
-		// 1. Déclarations S2C et C2S
-		PayloadTypeRegistry.clientboundPlay().register(PlayerPositionPayload.TYPE, PlayerPositionPayload.CODEC);
-		PayloadTypeRegistry.serverboundPlay().register(UpdateShareStatusPayload.TYPE, UpdateShareStatusPayload.CODEC);
+	public XaeroHeadTracker(IEventBus modEventBus) {
+		// Enregistrement des événements réseau spécifiques au mod
+		modEventBus.addListener(this::registerNetworking);
 
-		// 2. Écouteur C2S : Quand un client change ses paramètres
-		ServerPlayNetworking.registerGlobalReceiver(UpdateShareStatusPayload.TYPE, (payload, context) -> {
-			UUID uuidJoueur = context.player().getUUID();
-			if (payload.isSharing()) {
-				joueursCaches.remove(uuidJoueur); // Il veut partager, on le retire de la blacklist
-			} else {
-				joueursCaches.add(uuidJoueur); // Il se cache, on l'ajoute
-			}
-		});
+		// Enregistrement de la boucle (tick) sur le bus global du jeu
+		NeoForge.EVENT_BUS.addListener(this::onServerTick);
+	}
 
-		// 3. Boucle de diffusion
-		ServerTickEvents.END_SERVER_TICK.register(server -> {
-			compteurTemps++;
-			if (compteurTemps >= 20) {
-				compteurTemps = 0;
+	private void registerNetworking(final RegisterPayloadHandlersEvent event) {
+		final PayloadRegistrar registrar = event.registrar("1");
 
-				for (ServerPlayer joueur : server.getPlayerList().getPlayers()) {
-					// L'ASTUCE EST ICI : Si le joueur est dans la liste des cachés, on saute son tour !
-					if (joueursCaches.contains(joueur.getUUID())) {
-						continue;
-					}
-
-					String pseudo = joueur.getName().getString();
-					UUID uuid = joueur.getUUID();
-					double x = joueur.getX();
-					double y = joueur.getY();
-					double z = joueur.getZ();
-
-					PlayerPositionPayload paquet = new PlayerPositionPayload(pseudo, uuid, x, y, z);
-
-					for (ServerPlayer destinataire : server.getPlayerList().getPlayers()) {
-						ServerPlayNetworking.send(destinataire, paquet);
-					}
+		// Réception du paquet client -> serveur
+		registrar.playToServer(
+				UpdateShareStatusPayload.TYPE,
+				UpdateShareStatusPayload.CODEC,
+				(payload, context) -> {
+					// On exécute le changement de manière synchronisée
+					context.enqueueWork(() -> {
+						UUID uuidJoueur = context.player().getUUID();
+						if (payload.isSharing()) {
+							joueursCaches.remove(uuidJoueur);
+						} else {
+							joueursCaches.add(uuidJoueur);
+						}
+					});
 				}
+		);
+
+		// Déclaration du paquet serveur -> client
+		registrar.playToClient(
+				PlayerPositionPayload.TYPE,
+				PlayerPositionPayload.CODEC,
+				name.modid.client.XaeroHeadTrackerClient::recevoirPositions
+		);
+	}
+
+	private void onServerTick(ServerTickEvent.Post event) {
+		compteurTemps++;
+		if (compteurTemps >= 20) {
+			compteurTemps = 0;
+
+			for (ServerPlayer joueur : event.getServer().getPlayerList().getPlayers()) {
+				if (joueursCaches.contains(joueur.getUUID())) {
+					continue;
+				}
+
+				String pseudo = joueur.getName().getString();
+				UUID uuid = joueur.getUUID();
+				double x = joueur.getX();
+				double y = joueur.getY();
+				double z = joueur.getZ();
+
+				PlayerPositionPayload paquet = new PlayerPositionPayload(pseudo, uuid, x, y, z);
+
+				// NeoForge gère l'envoi global plus facilement que Fabric
+				PacketDistributor.sendToAllPlayers(paquet);
 			}
-		});
+		}
 	}
 }

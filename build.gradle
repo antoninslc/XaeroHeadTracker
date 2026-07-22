@@ -1,5 +1,5 @@
 plugins {
-	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+	id 'net.neoforged.moddev' version "${moddev_plugin_version}"
 	id 'maven-publish'
 }
 
@@ -12,31 +12,58 @@ repositories {
 		name "Xaero's Maven"
 	}
 }
-loom {
-	splitEnvironmentSourceSets()
+
+neoForge {
+	version = project.neoforge_version
+
+	runs {
+		client {
+			client()
+			systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+			programArguments.addAll('--username', 'Joueur1')
+		}
+		client2 {
+			client()
+			gameDirectory = file('run2')
+			systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+			programArguments.addAll('--username', 'Joueur2')
+		}
+		server {
+			server()
+			systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+		}
+	}
 
 	mods {
-		"xaeroheadtracker" {
-			sourceSet sourceSets.main
-			sourceSet sourceSets.client
+		"${project.mod_id}" {
+			sourceSet(sourceSets.main)
 		}
 	}
 }
 
-dependencies {
-	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
-	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+// S'assure que le dossier 'run2' existe physiquement avant de lancer le client
+tasks.matching { it.name == 'prepareClient2Run' || it.name == 'runClient2' }.configureEach {
+	doFirst {
+		file('run2').mkdirs()
+	}
+}
 
-	implementation "xaero.map:xaeroworldmap-fabric-26.2:1.41.3"
+dependencies {
+	// NeoForge gère automatiquement la dépendance Minecraft
+	implementation "xaero.map:xaeroworldmap-neoforge-${project.minecraft_version}:${project.xaeroworldmap_version}"
 }
 
 processResources {
-	def version = project.version
-	inputs.property "version", version
+	def expandProps = [
+			"version": project.mod_version,
+			"minecraft_version": project.minecraft_version,
+			"neoforge_version": project.neoforge_version
+	]
 
-	filesMatching("fabric.mod.json") {
-		expand "version": version
+	inputs.properties expandProps
+
+	filesMatching("META-INF/neoforge.mods.toml") {
+		expand expandProps
 	}
 }
 
@@ -45,18 +72,15 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 java {
-	// Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
-	// if it is present.
-	// If you remove this line, sources will not be generated.
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(25)
+	}
 	withSourcesJar()
-
-	sourceCompatibility = JavaVersion.VERSION_25
-	targetCompatibility = JavaVersion.VERSION_25
 }
 
 jar {
 	archiveBaseName.set("XaeroHeadTracker")
-	archiveClassifier.set("fabric-26.2")
+	archiveClassifier.set("neoforge-${project.minecraft_version}")
 	archiveVersion.set(project.version)
 
 	from("LICENSE") {
@@ -64,19 +88,12 @@ jar {
 	}
 }
 
-// configure the maven publication
 publishing {
 	publications {
 		create("mavenJava", MavenPublication) {
 			from components.java
 		}
 	}
-
-	// See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
 	repositories {
-		// Add repositories to publish to here.
-		// Notice: This block does NOT have the same function as the block in the top level.
-		// The repositories here will be used for publishing your artifact, not for
-		// retrieving dependencies.
 	}
 }

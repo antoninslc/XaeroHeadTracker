@@ -1,0 +1,35 @@
+modLoader="javafml"
+loaderVersion="[1,)"
+license="MIT"
+
+[[mods]]
+modId="xaeroheadtracker"
+version="1.0.0"
+displayName="Xaero Head Tracker"
+description="Suivi des têtes de joueurs sur la carte Xaero."
+
+# --- AJOUTE CES DEUX LIGNES ICI ---
+[[mixins]]
+config="xaeroheadtracker.mixins.json"
+# ----------------------------------
+
+[[dependencies.xaeroheadtracker]]
+modId="neoforge"
+type="required"
+versionRange="[21.0.0,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.xaeroheadtracker]]
+modId="minecraft"
+type="required"
+versionRange="[26.2,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.xaeroheadtracker]]
+modId="xaeroworldmap"
+type="required"
+versionRange="[1.44.2,)"
+ordering="AFTER"
+side="CLIENT"
