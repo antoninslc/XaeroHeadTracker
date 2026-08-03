@@ -4,21 +4,21 @@ import name.modid.mixin.GuiMapAccessor;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
-import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.multiplayer.PlayerInfo;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 
 import name.modid.PlayerPositionPayload;
 import name.modid.XaeroHeadTracker;
 
 // L'IMPORT DE LA CARTE XAERO
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.client.resources.PlayerSkin;
+import net.minecraft.resources.Identifier;
 import xaero.map.gui.GuiMap;
 import xaero.map.graphics.MapRenderHelper;
 
@@ -44,36 +44,29 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 
 	public static final Map<String, PositionData> positionsJoueurs = new HashMap<>();
 	public static boolean isMinimapInstalled = false;
-	// 1. On déclare officiellement notre propre catégorie dans les paramètres du jeu
 	public static final String CATEGORIE_MOD = "category.xaeroheadtracker.parametres";
-	// 2. Notre raccourci clavier
 	private static KeyMapping toucheParametres;
 
-	private static final ResourceLocation EYE_TEXTURE = ResourceLocation.fromNamespaceAndPath("xaeroheadtracker", "textures/gui/eye.png");
+	private static final Identifier EYE_TEXTURE = Identifier.fromNamespaceAndPath("xaeroheadtracker", "textures/gui/eye.png");
 
 	@Override
 	public void onInitializeClient() {
 
 		ModConfig.INSTANCE.charger();
 
-		// On demande à Fabric si l'un des deux mods Minimap de Xaero est présent dans le dossier mods
 		isMinimapInstalled = FabricLoader.getInstance().isModLoaded("xaerominimap")
 				|| FabricLoader.getInstance().isModLoaded("xaerominimapfair");
 
-		// Dès qu'on rejoint un serveur (ou un monde solo), on annonce notre choix !
 		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
-			// On utilise la valeur qui a été chargée depuis le JSON
 			ClientPlayNetworking.send(new UpdateShareStatusPayload(ModConfig.INSTANCE.sharePosition));
 		});
 
-		// 1. On crée et on enregistre le raccourci (avec KeyMappingHelper !)
 		toucheParametres = KeyBindingHelper.registerKeyBinding(new KeyMapping(
-				"key.xaeroheadtracker.open_settings", // La clé magique est ici
+				"key.xaeroheadtracker.open_settings",
 				GLFW.GLFW_KEY_H,
-				CATEGORIE_MOD
+				KeyMapping.Category.register(Identifier.fromNamespaceAndPath("xaeroheadtracker", "parametres"))
 		));
 
-		// 2. On écoute en permanence (à chaque "tick" du jeu) si la touche est pressée
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			while (toucheParametres.consumeClick()) {
 				if (client.screen == null) {
@@ -92,7 +85,6 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 			double z = payload.z();
 			String dimension = payload.dimension();
 
-			// L'ASTUCE : Si le joueur est déjà dans notre liste, on met juste à jour ses infos
 			PositionData posExistante = positionsJoueurs.get(pseudo);
 			if (posExistante != null) {
 				posExistante.x = x;
@@ -101,7 +93,6 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 				posExistante.dimension = dimension;
 				posExistante.timestamp = System.currentTimeMillis();
 			} else {
-				// C'est un nouveau joueur, on l'ajoute
 				positionsJoueurs.put(pseudo, new PositionData(x, y, z, uuid, dimension));
 			}
 		});
@@ -110,162 +101,24 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 
 			if (screen.getClass().getName().contains("GuiMap")) {
 
-				AbstractWidget calqueDessin = new AbstractWidget(0, 0, screen.width, screen.height, Component.empty()) {
-
-					@Override
-					protected void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-						GuiMap mapScreen = (GuiMap) screen;
-						GuiMapAccessor accessor = (GuiMapAccessor) mapScreen;
-
-						double cameraX = accessor.getCameraX();
-						double cameraZ = accessor.getCameraZ();
-						double scale = accessor.getScale();
-						double screenScale = accessor.getScreenScale();
-						long tempsActuel = System.currentTimeMillis();
-
-						// Le grand nettoyage : on supprime tous ceux dont le timestamp est plus vieux que 120 minutes
-						// (120 min * 60 sec * 1000 millisecondes)
-						positionsJoueurs.entrySet().removeIf(entree ->
-								(tempsActuel - entree.getValue().timestamp) > 120 * 60 * 1000L
-						);
-
-						Minecraft client = Minecraft.getInstance();
-
-						// NOUVEAU : On regarde dans quelle dimension on est actuellement
-						String maDimension = client.level != null ? client.level.dimension().location().toString() : "";
-
-						// La bonne boucle avec le bon type (String) et la bonne liste (positionsJoueurs)
-						for (Map.Entry<String, PositionData> entree : positionsJoueurs.entrySet()) {
-
-							// On extrait les variables correctement
-							String pseudo = entree.getKey();
-							PositionData pos = entree.getValue();
-							UUID uuidJoueur = pos.uuid;
-
-							// NOUVELLE CONDITION : On ignore le joueur s'il n'est pas dans NOTRE dimension
-							if (!pos.dimension.equals(maDimension)) {
-								continue;
-							}
-
-							// NOUVELLE CONDITION SÉCURISÉE :
-							if (isMinimapInstalled && client.level != null && client.level.getPlayerByUUID(uuidJoueur) != null) {
-								continue; // La Minimap gère ce joueur, on passe au suivant
-							}
-
-							// L'ASTUCE EST ICI : On ignore le joueur si c'est nous-même
-							if (client.player != null && uuidJoueur.equals(client.player.getUUID())) {
-								continue; // On passe au joueur suivant sans rien dessiner
-							}
-
-							// Calcul de la position sur l'écran
-							double drawX = screen.width / 2.0 + (pos.x - cameraX) * scale / screenScale;
-							double drawY = screen.height / 2.0 + (pos.z - cameraZ) * scale / screenScale;
-
-							// Si le joueur est visible sur l'écran
-							if (drawX > 0 && drawX < screen.width && drawY > 0 && drawY < screen.height) {
-								int headSize = 8; // taille d'affichage à l'écran, en pixels GUI
-
-								PlayerInfo info = client.getConnection() != null
-										? client.getConnection().getPlayerInfo(uuidJoueur)
-										: null;
-
-								// 1. On essaie d'obtenir la peau
-								ResourceLocation skinTextureToUse = null;
-
-								if (info != null) {
-									// Le joueur est en ligne, on capture sa vraie peau et on la SAUVEGARDE
-									skinTextureToUse = info.getSkin().texture();
-									pos.texturePeau = skinTextureToUse;
-								} else {
-									// Le joueur est déconnecté, on utilise notre sauvegarde !
-									skinTextureToUse = pos.texturePeau;
-								}
-
-								// 2. Si on a trouvé une peau (soit en ligne, soit via notre sauvegarde)
-								if (skinTextureToUse != null) {
-
-									if (ModConfig.INSTANCE.showHeads) {
-										guiGraphics.blit(
-												skinTextureToUse,
-												(int) drawX - headSize / 2, (int) drawY - headSize / 2,
-												8.0F, 8.0F,
-												headSize, headSize,
-												64, 64
-										);
-									}
-
-									if (ModConfig.INSTANCE.showNames) {
-										MapRenderHelper.drawCenteredStringWithBackground(
-												guiGraphics, client.font, pseudo,
-												(int) drawX, (int) drawY - headSize / 2 - 10,
-												-1,
-												0.0F, 0.0F, 0.0F, 0.4F, guiGraphics.bufferSource().getBuffer(net.minecraft.client.renderer.RenderType.gui())
-										);
-
-										// On calcule le temps
-										long msEcoulees = tempsActuel - pos.timestamp;
-										long minutesEcoulees = msEcoulees / 60000L;
-
-										String texteStatut;
-										if (msEcoulees <= 4000) {
-											texteStatut = "§aLive";
-										} else if (minutesEcoulees < 1) {
-											texteStatut = "§7< 1 min";
-										} else {
-											texteStatut = "§7" + minutesEcoulees + " min";
-										}
-
-										// On dessine le statut
-										float echelle = 0.7F;
-										guiGraphics.pose().pushPose();
-										guiGraphics.pose().scale(echelle, echelle, 1.0f);
-
-										int cibleX = (int) (drawX / echelle);
-										int cibleY = (int) ((drawY + headSize / 2 + 2) / echelle);
-
-										MapRenderHelper.drawCenteredStringWithBackground(
-												guiGraphics, client.font, texteStatut,
-												cibleX, cibleY,
-												-1,
-												0.0F, 0.0F, 0.0F, 0.4F, guiGraphics.bufferSource().getBuffer(net.minecraft.client.renderer.RenderType.gui())
-										);
-
-										guiGraphics.pose().popPose();
-									}
-								} else {
-									// Le carré rouge n'apparaîtra QUE si on vient de lancer le jeu
-									// et que le joueur s'est déconnecté avant même qu'on ait pu voir sa peau une seule fois.
-									guiGraphics.fill((int) drawX - 3, (int) drawY - 3, (int) drawX + 3, (int) drawY + 3, 0xFFFF0000);
-								}
-							}
-						}
-					}
-
-					@Override
-					public boolean isMouseOver(double mouseX, double mouseY) { return false; }
-					@Override
-					protected void updateWidgetNarration(NarrationElementOutput narrationElementOutput) {}
-				};
-
-				Screens.getButtons(screen).add(calqueDessin);
-
-				// 1. On place le bouton en bas à gauche (screen.height - 25) pour éviter les boutons de Xaero
+				// 1. On prépare notre bouton sans l'ajouter à la liste de l'écran
 				AbstractButton boutonOeil = new AbstractButton(7, 32, 16, 16, Component.literal("O")) {
-
 					@Override
-					public void onPress() {
+					public void onPress(net.minecraft.client.input.InputWithModifiers input) {
 						client.setScreen(new ConfigScreen(screen));
 					}
 
 					@Override
-					protected void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+					protected void renderContents(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
 						int decalageY = this.isHovered() ? -1 : 0;
 						guiGraphics.blit(
+								RenderPipelines.GUI_TEXTURED,        // Le nouveau pipeline obligatoire
 								EYE_TEXTURE,
-								this.getX(), this.getY() + decalageY,
-								0.0F, 0.0F,
-								16, 16,
-								16, 16
+								this.getX(), this.getY() + decalageY, // Position à l'écran
+								0, 0,                                  // u, v (coin haut-gauche de la texture source)
+								16, 16,                                // width, height : taille à l'écran
+								16, 16,                                // regionWidth, regionHeight : taille de la zone à découper dans la texture
+								16, 16                                 // textureWidth, textureHeight : taille RÉELLE du fichier PNG
 						);
 					}
 
@@ -273,18 +126,155 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 					protected void updateWidgetNarration(NarrationElementOutput narrationElementOutput) {}
 				};
 
-				boutonOeil.setTooltip(Tooltip.create(Component.translatable("key.xaeroheadtracker.open_settings")));
-				Screens.getButtons(screen).add(boutonOeil);
+				// boutonOeil.setTooltip(Tooltip.create(Component.translatable("key.xaeroheadtracker.open_settings")));
 
-				// 2. L'ASTUCE ULTIME : On passe en priorité absolue pour le clic !
-				ScreenMouseEvents.allowMouseClick(screen).register((ecran, sourisX, sourisY, boutonSouris) -> {
-					// Si on clique sur notre œil, il fait son action et on renvoie "false"
-					// pour interdire à Xaero de traiter ce clic
-					if (boutonOeil.mouseClicked(sourisX, sourisY, boutonSouris)) {
-						return false;
+				// 2. RENDU FORCÉ À LA TOUTE FIN : On dessine par-dessus la carte de Xaero
+				ScreenEvents.afterRender(screen).register((s, guiGraphics, mouseX, mouseY, partialTick) -> {
+					GuiMap mapScreen = (GuiMap) screen;
+					GuiMapAccessor accessor = (GuiMapAccessor) mapScreen;
+
+					double cameraX = accessor.getCameraX();
+					double cameraZ = accessor.getCameraZ();
+					double scale = accessor.getScale();
+					double screenScale = accessor.getScreenScale();
+					long tempsActuel = System.currentTimeMillis();
+
+					positionsJoueurs.entrySet().removeIf(entree ->
+							(tempsActuel - entree.getValue().timestamp) > 120 * 60 * 1000L
+					);
+
+					String maDimension = client.level != null ? client.level.dimension().identifier().toString() : "";
+
+					// Dessin des têtes
+					for (Map.Entry<String, PositionData> entree : positionsJoueurs.entrySet()) {
+						String pseudo = entree.getKey();
+						PositionData pos = entree.getValue();
+						UUID uuidJoueur = pos.uuid;
+
+						if (!pos.dimension.equals(maDimension)) {
+							continue;
+						}
+
+						// ATTENTION POUR TES TESTS : J'ai gardé la condition, n'oublie pas que si un joueur
+						// est à côté de toi dans le monde, la minimap l'affiche et cette ligne l'ignore sur la grande carte !
+						if (isMinimapInstalled && client.level != null && client.level.getPlayerByUUID(uuidJoueur) != null) {
+							continue;
+						}
+
+						if (client.player != null && uuidJoueur.equals(client.player.getUUID())) {
+							continue;
+						}
+
+						double drawX = screen.width / 2.0 + (pos.x - cameraX) * scale / screenScale;
+						double drawY = screen.height / 2.0 + (pos.z - cameraZ) * scale / screenScale;
+
+						if (drawX > 0 && drawX < screen.width && drawY > 0 && drawY < screen.height) {
+							int headSize = 8;
+
+							PlayerInfo info = client.getConnection() != null
+									? client.getConnection().getPlayerInfo(uuidJoueur)
+									: null;
+
+							Identifier skinTextureToUse = null;
+
+							if (info != null) {
+								skinTextureToUse = info.getSkin().body().texturePath();
+								pos.texturePeau = skinTextureToUse;
+							} else {
+								skinTextureToUse = pos.texturePeau;
+							}
+
+							if (skinTextureToUse != null) {
+								if (ModConfig.INSTANCE.showHeads) {
+									guiGraphics.blit(
+											RenderPipelines.GUI_TEXTURED,
+											skinTextureToUse,
+											(int) drawX - headSize / 2, (int) drawY - headSize / 2, // position écran
+											8, 8,           // u, v : le décalage pour cibler le visage sur la skin
+											headSize, headSize,   // taille AFFICHÉE à l'écran (8px dans ton cas)
+											8, 8,           // regionWidth, regionHeight : taille de la zone du visage à découper (8x8 sur la skin)
+											64, 64          // textureWidth, textureHeight : taille réelle du fichier skin
+									);
+								}
+
+								if (ModConfig.INSTANCE.showNames) {
+									MapRenderHelper.drawCenteredStringWithBackground(
+											guiGraphics, client.font, pseudo,
+											(int) drawX, (int) drawY - headSize / 2 - 10,
+											-1,
+											0.0F, 0.0F, 0.0F, 0.4F
+									);
+
+									long msEcoulees = tempsActuel - pos.timestamp;
+									long minutesEcoulees = msEcoulees / 60000L;
+
+									String texteStatut;
+									if (msEcoulees <= 4000) {
+										texteStatut = "§aLive";
+									} else if (minutesEcoulees < 1) {
+										texteStatut = "§7< 1 min";
+									} else {
+										texteStatut = "§7" + minutesEcoulees + " min";
+									}
+
+									float echelle = 0.7F;
+									guiGraphics.pose().pushMatrix();
+									guiGraphics.pose().scale(echelle, echelle);
+
+									int cibleX = (int) (drawX / echelle);
+									int cibleY = (int) ((drawY + headSize / 2 + 2) / echelle);
+
+									MapRenderHelper.drawCenteredStringWithBackground(
+											guiGraphics, client.font, texteStatut,
+											cibleX, cibleY,
+											-1,
+											0.0F, 0.0F, 0.0F, 0.4F
+									);
+
+									guiGraphics.pose().popMatrix();
+								}
+							} else {
+								guiGraphics.fill((int) drawX - 3, (int) drawY - 3, (int) drawX + 3, (int) drawY + 3, 0xFFFF0000);
+							}
+						}
 					}
-					// Sinon, on renvoie "true" pour laisser Xaero glisser sa carte normalement
-					return true;
+
+					// Rendu manuel du bouton par-dessus tout le reste
+					boutonOeil.render(guiGraphics, mouseX, mouseY, partialTick);
+
+					if (boutonOeil.isMouseOver(mouseX, mouseY)) {
+						String texteTooltip = Component.translatable("key.xaeroheadtracker.open_settings").getString();
+
+						int largeurTexte = client.font.width(texteTooltip);
+						int tooltipX = mouseX + 12; // léger décalage pour ne pas être sous le curseur
+						int tooltipY = mouseY + 12;
+
+						// Fond du tooltip (petit padding autour du texte)
+						guiGraphics.fill(
+								tooltipX - 3, tooltipY - 3,
+								tooltipX + largeurTexte + 3, tooltipY + client.font.lineHeight + 3,
+								0xF0100010 // Fond sombre semi-opaque, couleur classique des tooltips vanilla
+						);
+
+						// Le texte lui-même, par-dessus le fond
+						guiGraphics.drawString(client.font, texteTooltip, tooltipX, tooltipY, 0xFFFFFFFF, true);
+					}
+
+				});
+
+				// 3. GESTION MANUELLE DES CLICS : Utilisation d'un écouteur compatible
+				ScreenMouseEvents.allowMouseClick(screen).register(new ScreenMouseEvents.AllowMouseClick() {
+					@Override
+					public boolean allowMouseClick(Screen screen, MouseButtonEvent context) {
+						double mouseX = context.x();
+						double mouseY = context.y();
+
+						if (boutonOeil.isMouseOver(mouseX, mouseY)) {
+							boutonOeil.mouseClicked(context, false); // <-- on repasse l'objet context tel quel
+							return false; // on absorbe le clic, Xaero ne le reçoit jamais
+						}
+						return true;
+					}
 				});
 			}
 		});
@@ -295,13 +285,13 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 		public UUID uuid;
 		public String dimension;
 		public long timestamp;
-		public ResourceLocation texturePeau; // NOUVEAU : La mémoire de la peau !
+		public Identifier texturePeau;
 
 		public PositionData(double x, double y, double z, UUID uuid, String dimension) {
 			this.x = x; this.y = y; this.z = z; this.uuid = uuid;
 			this.dimension = dimension;
 			this.timestamp = System.currentTimeMillis();
-			this.texturePeau = null; // Par défaut, on ne l'a pas encore
+			this.texturePeau = null;
 		}
 	}
 }

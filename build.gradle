@@ -3,6 +3,10 @@ plugins {
 	id 'maven-publish'
 }
 
+base {
+	archivesName = "XaeroHeadTracker"
+}
+
 version = project.mod_version
 group = project.maven_group
 
@@ -30,7 +34,7 @@ dependencies {
 	// Le mot-clé "modImplementation" est vital ici :
 	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-	modImplementation "xaero.map:xaeroworldmap-fabric-1.21.1:${project.xaeroworldmap_version}"
+	modImplementation "xaero.map:xaeroworldmap-fabric-1.21.11:${project.xaeroworldmap_version}"
 }
 
 processResources {
@@ -57,13 +61,13 @@ java {
 }
 
 jar {
-	archiveBaseName.set("XaeroHeadTracker")
-	archiveClassifier.set("fabric-${project.minecraft_version}")
-	archiveVersion.set(project.version)
-
 	from("LICENSE") {
 		rename { "${it}_XaeroHeadTracker"}
 	}
+}
+
+remapJar {
+	archiveClassifier.set("fabric-${project.minecraft_version}")
 }
 
 // configure the maven publication

@@ -4,7 +4,7 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,7 +60,7 @@ public class XaeroHeadTracker implements ModInitializer {
 					double z = joueur.getZ();
 
 					// CORRECTION 1 : On utilise level() au lieu de serverLevel()
-					String dimensionJoueur = joueur.level().dimension().location().toString();
+					String dimensionJoueur = joueur.level().dimension().identifier().toString();
 
 					// CORRECTION 2 : On passe bien la variable dimensionJoueur à la toute fin !
 					PlayerPositionPayload paquet = new PlayerPositionPayload(pseudo, uuid, x, y, z, dimensionJoueur);
