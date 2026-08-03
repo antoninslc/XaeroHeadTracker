@@ -1,0 +1,253 @@
+---- Minecraft Crash Report ----
+// Who set us up the TNT?
+
+Time: 2026-07-22 18:04:33
+Description: Bootstrap
+
+net.neoforged.fml.ModLoadingException: Loading errors encountered:
+	- A mixin config named xaeroheadtracker.mixins.json was declared in C:/Users/Antonin/Documents/Projets/xaeroheadtracker-template-26.2/build/classes/java/main, but doesn't exist
+
+	at net.neoforged.fml.ModLoader.throwIfErrors(ModLoader.java:113) ~[loader-11.0.13.jar:11.0] {}
+	at net.neoforged.fml.ModLoader.gatherAndInitializeMods(ModLoader.java:74) ~[loader-11.0.13.jar:11.0] {}
+	at TRANSFORMER/neoforge@26.2.0.28-beta/net.neoforged.neoforge.internal.CommonModLoader.begin(CommonModLoader.java:49) ~[neoforge-26.2.0.28-beta-universal.jar:?] {}
+	at TRANSFORMER/neoforge@26.2.0.28-beta/net.neoforged.neoforge.client.loading.ClientModLoader.begin(ClientModLoader.java:55) ~[neoforge-26.2.0.28-beta-universal.jar:?] {}
+	at TRANSFORMER/minecraft@26.2/net.minecraft.client.main.Main.main(Main.java:167) [minecraft-patched-26.2.0.28-beta.jar:?] {}
+	at net.neoforged.fml.startup.Client.main(Client.java:19) [loader-11.0.13.jar:11.0] {}
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104) ~[?:?] {}
+	at java.base/java.lang.reflect.Method.invoke(Method.java:565) ~[?:?] {}
+	at net.neoforged.devlaunch.Main.main(Main.java:57) [DevLaunch-1.0.2.jar:?] {}
+
+
+A detailed walkthrough of the error, its code path and all known details is as follows:
+---------------------------------------------------------------------------------------
+
+-- Head --
+Thread: main
+Stacktrace:
+	at net.neoforged.fml.ModLoader.throwIfErrors(ModLoader.java:113) ~[loader-11.0.13.jar:11.0] {}
+	at net.neoforged.fml.ModLoader.gatherAndInitializeMods(ModLoader.java:74) ~[loader-11.0.13.jar:11.0] {}
+	at TRANSFORMER/neoforge@26.2.0.28-beta/net.neoforged.neoforge.internal.CommonModLoader.begin(CommonModLoader.java:49) ~[neoforge-26.2.0.28-beta-universal.jar:?] {}
+	at TRANSFORMER/neoforge@26.2.0.28-beta/net.neoforged.neoforge.client.loading.ClientModLoader.begin(ClientModLoader.java:55) ~[neoforge-26.2.0.28-beta-universal.jar:?] {}
+-- Initialization --
+Details:
+	Modules: 
+		ADVAPI32.dll:API avancées Windows 32:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		AVRT.dll:Exécution multimédia en temps réel:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		BCrypt.dll:Bibliothèque de primitives de chiffrement Windows:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		COMCTL32.dll:Bibliothèque de contrôles de l’expérience utilisateur:6.10 (WinBuild.160101.0800):Microsoft Corporation
+		COMDLG32.dll:DLL commune de boîtes de dialogues:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		CRYPT32.dll:Crypto API32:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		CRYPTBASE.DLL:Base cryptographic API DLL:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		CRYPTSP.dll:Cryptographic Service Provider API:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		CoreMessaging.dll:Microsoft CoreMessaging Dll:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		CoreUIComponents.dll:Microsoft Core UI Components Dll:10.0.26100.8875:Microsoft Corporation
+		CorperfmonExt.dll:Microsoft Common Language Runtime - Performance Counter DLL:4.8.9221.0 built by: NET481REL1LAST_25H2:Microsoft Corporation
+		DBGHELP.DLL:Windows Image Helper:10.0.26100.8328 (WinBuild.160101.0800):Microsoft Corporation
+		DEVOBJ.dll:Device Information Set DLL:10.0.26100.8737 (WinBuild.160101.0800):Microsoft Corporation
+		DNSAPI.dll:DNS DLL de l’API Client:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		DSPARSE.dll:Active Directory Domain Services API:10.0.26100.1 (WinBuild.160101.0800):Microsoft Corporation
+		DWrite.dll:Services de typographie Microsoft DirectX:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		GDI32.dll:GDI Client DLL:10.0.26100.8328 (WinBuild.160101.0800):Microsoft Corporation
+		GLU32.dll:DLL bibliothèque des utilitaires OpenGL:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		IMM32.DLL:Multi-User Windows IMM32 API Client DLL:10.0.26100.8521 (WinBuild.160101.0800):Microsoft Corporation
+		IPHLPAPI.DLL:API de l’application d’assistance IP:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		KERNEL32.DLL:DLL du client API BASE Windows NT:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		KERNELBASE.dll:DLL du client API BASE Windows NT:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		MSASN1.dll:ASN.1 Runtime APIs:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		MSCTF.dll:DLL de MSCTF Server:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		MpOav.dll:IOfficeAntiVirus Module:4.18.26060.3008 (df1b0eba8e0e68e7272235d6dea4de3285c715b9):Microsoft Corporation
+		NSI.dll:NSI User-mode interface DLL:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		OLEAUT32.dll:OLEAUT32.DLL:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		OpenAL.dll:Main implementation library:1.25.1:
+		POWRPROF.dll:DLL d’assistance du profil d’alimentation:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		PSAPI.DLL:Process Status Helper:10.0.26100.8521 (WinBuild.160101.0800):Microsoft Corporation
+		RPCRT4.dll:Runtime d’appel de procédure distante:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		SETUPAPI.dll:Installation de L’API Windows:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		SHCORE.dll:SHCORE:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		SHELL32.dll:DLL commune du shell Windows:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		SspiCli.dll:Security Support Provider Interface:10.0.26100.8737 (WinBuild.160101.0800):Microsoft Corporation
+		UMPDC.dll:User Mode Power Dependency Coordinator:10.0.26100.8115 (WinBuild.160101.0800):Microsoft Corporation
+		USER32.dll:DLL client de l’API uilisateur de Windows multi-utilisateurs:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		USERENV.dll:Userenv:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		USP10.dll:Uniscribe Unicode script processor:10.0.26100.1 (WinBuild.160101.0800):Microsoft Corporation
+		VCRUNTIME140.dll:Microsoft® C Runtime Library:14.40.33810.0:Microsoft Corporation
+		VCRUNTIME140_1_CLR0400.dll:Microsoft® C Runtime Library:14.29.30154.0 built by: cloudtest:Microsoft Corporation
+		VCRUNTIME140_CLR0400.dll:Microsoft® C Runtime Library:14.29.30154.0 built by: cloudtest:Microsoft Corporation
+		VERSION.dll:Version Checking and File Installation Libraries:10.0.26100.1150 (WinBuild.160101.0800):Microsoft Corporation
+		WINMM.dll:DLL API MCI:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		WINSTA.dll:Winstation Library:10.0.26100.8737 (WinBuild.160101.0800):Microsoft Corporation
+		WINTRUST.dll:Microsoft Trust Verification APIs:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		WS2_32.dll:Windows Socket 2.0 32-Bit DLL:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		WTSAPI32.dll:Windows Remote Desktop Session Host Server SDK APIs:10.0.26100.8737 (WinBuild.160101.0800):Microsoft Corporation
+		amdihk64.dll:Radeon Settings: Host Service:2,00,00,1788:Advanced Micro Devices, Inc.
+		amsi.dll:Anti-Malware Scan Interface:10.0.26100.7309 (WinBuild.160101.0800):Microsoft Corporation
+		atig6pxx.dll:atiglpxx.dll:8.14.01.6564:Advanced Micro Devices, Inc. 
+		atio6axx.dll:AMD OpenGL Driver:24.08.230729_569461f:Advanced Micro Devices, Inc
+		bcryptPrimitives.dll:Windows Cryptographic Primitives Library:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		cfgmgr32.dll:Configuration Manager DLL:10.0.26100.8115 (WinBuild.160101.0800):Microsoft Corporation
+		clbcatq.dll:COM+ Configuration Catalog:2001.12.10941.16384 (WinBuild.160101.0800):Microsoft Corporation
+		combase.dll:Microsoft COM pour Windows:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		dbgcore.DLL:Windows Core Debugging Helpers:10.0.26100.8737 (WinBuild.160101.0800):Microsoft Corporation
+		dinput8.dll:Microsoft DirectInput:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		directxdatabasehelper.dll:DirectXDatabaseHelper:10.0.26100.8737 (WinBuild.160101.0800):Microsoft Corporation
+		dwmapi.dll:API du Gestionnaire de fenêtres du Bureau Microsoft:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		dxcore.dll:DXCore:10.0.26100.8737 (WinBuild.160101.0800):Microsoft Corporation
+		fastprox.dll:WMI Custom Marshaller:10.0.26100.8737 (WinBuild.160101.0800):Microsoft Corporation
+		freetype.dll:Font Rendering Library:2.14.1:The FreeType Project
+		fwpuclnt.dll:API en mode utilisateur FWP/IPsec:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		gdi32full.dll:GDI Client DLL:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		glfw.dll:GLFW 3.5.0 DLL:3.5.0:GLFW
+		icm32.dll:Microsoft Color Management Module (CMM):10.0.26100.2314 (WinBuild.160101.0800):Microsoft Corporation
+		inputhost.dll:InputHost:10.0.26100.8737 (WinBuild.160101.0800):Microsoft Corporation
+		java.dll:OpenJDK Platform binary:25.0.3.0:Eclipse Adoptium
+		java.exe:OpenJDK Platform binary:25.0.3.0:Eclipse Adoptium
+		jemalloc.dll
+		jimage.dll:OpenJDK Platform binary:25.0.3.0:Eclipse Adoptium
+		jli.dll:OpenJDK Platform binary:25.0.3.0:Eclipse Adoptium
+		jna1183708756267658310.dll:JNA native library:7.0.2:Java(TM) Native Access (JNA)
+		jvm.dll:OpenJDK 64-Bit server VM:25.0.3.0:Eclipse Adoptium
+		kernel.appcore.dll:AppModel API Host:10.0.26100.8737 (WinBuild.160101.0800):Microsoft Corporation
+		lwjgl.dll
+		lwjgl_opengl.dll
+		lwjgl_stb.dll
+		lwjgl_tinyfd.dll
+		lwjgl_vma.dll
+		management.dll:OpenJDK Platform binary:25.0.3.0:Eclipse Adoptium
+		management_ext.dll:OpenJDK Platform binary:25.0.3.0:Eclipse Adoptium
+		mscms.dll:DLL du système de correspondance de couleurs Microsoft:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		mscoree.dll:Microsoft .NET Runtime Execution Engine:10.0.26100.3624 (WinBuild.160101.0800):Microsoft Corporation
+		mscoreei.dll:Microsoft .NET Runtime Execution Engine:4.8.9221.0 built by: NET481REL1LAST_25H2:Microsoft Corporation
+		msvcp140.dll:Microsoft® C Runtime Library:14.40.33810.0:Microsoft Corporation
+		msvcp_win.dll:Microsoft® C Runtime Library:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		msvcrt.dll:Windows NT CRT DLL:7.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		mswsock.dll:Fournisseur de service Sockets 2.0 de Microsoft Windows:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		napinsp.dll:Fournisseur Shim d’affectation de noms de messagerie:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		net.dll:OpenJDK Platform binary:25.0.3.0:Eclipse Adoptium
+		nimdnsNSP.dll:National Instruments Zeroconf Namespace Service Provider:216.0.2f0:National Instruments Corporation
+		nimdnsResponder.dll:National Instruments Zeroconf Library:216.0.2f0:National Instruments Corporation
+		nio.dll:OpenJDK Platform binary:25.0.3.0:Eclipse Adoptium
+		nlansp_c.dll:NLA Namespace Service Provider DLL:10.0.26100.8521 (WinBuild.160101.0800):Microsoft Corporation
+		ntdll.dll:DLL Couche NT:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		ole32.dll:Microsoft OLE pour Windows:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		opengl32.dll:OpenGL Client DLL:10.0.26100.8737 (WinBuild.160101.0800):Microsoft Corporation
+		pdh.dll:DLL d’application d’assistance Windows pour les données de performance:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		perfos.dll:DLL d’objets Performances système Windows:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		perfproc.dll:DLL d’objets Performances de processus système Windows:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		pfclient.dll:SysMain Client:10.0.26100.4202 (WinBuild.160101.0800):Microsoft Corporation
+		profapi.dll:User Profile Basic API:10.0.26100.8737 (WinBuild.160101.0800):Microsoft Corporation
+		rasadhlp.dll:Remote Access AutoDial Helper:10.0.26100.7920 (WinBuild.160101.0800):Microsoft Corporation
+		rasctrs.dll:DLL de compteur de performances d’accès distant Windows NT:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		rasman.dll:Remote Access Connection Manager:10.0.26100.8521 (WinBuild.160101.0800):Microsoft Corporation
+		rsaenh.dll:Microsoft Enhanced Cryptographic Provider:10.0.26100.1 (WinBuild.160101.0800):Microsoft Corporation
+		sechost.dll:Host for SCM/SDDL/LSA Lookup APIs:10.0.26100.1 (WinBuild.160101.0800):Microsoft Corporation
+		shaderc.dll
+		shlwapi.dll:Bibliothèque d’utilitaires légers du Shell:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		spirv-cross.dll
+		textinputframework.dll:"TextInputFramework.DYNLINK":10.0.26100.8737 (WinBuild.160101.0800):Microsoft Corporation
+		ucrtbase.dll:Microsoft® C Runtime Library:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		ucrtbase_clr0400.dll:Microsoft® C Runtime Library:14.29.30154.0 built by: cloudtest:Microsoft Corporation
+		uxtheme.dll:Bibliothèque de thèmes Ux Microsoft:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		vcruntime140_1.dll:Microsoft® C Runtime Library:14.40.33810.0:Microsoft Corporation
+		verify.dll:OpenJDK Platform binary:25.0.3.0:Eclipse Adoptium
+		vulkan-1.dll:Vulkan Loader:1.3.300.0:
+		wbemcomn.dll:WMI:10.0.26100.7920 (WinBuild.160101.0800):Microsoft Corporation
+		wbemprox.dll:WMI:10.0.26100.8737 (WinBuild.160101.0800):Microsoft Corporation
+		wbemsvc.dll:WMI:10.0.26100.8737 (WinBuild.160101.0800):Microsoft Corporation
+		win32u.dll:Win32u:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		windows.staterepositorycore.dll:Windows StateRepository API Core:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		windows.storage.dll:API de stockage Microsoft WinRT:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		winrnr.dll:LDAP RnR Provider DLL:10.0.26100.8737 (WinBuild.160101.0800):Microsoft Corporation
+		wintypes.dll:DLL de types de base Windows:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		wshbth.dll:Windows Sockets Helper DLL:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		xinput1_4.dll:API du contrôleur commun Microsoft:10.0.26100.8875 (WinBuild.160101.0800):Microsoft Corporation
+		zip.dll:OpenJDK Platform binary:25.0.3.0:Eclipse Adoptium
+Stacktrace:
+	at TRANSFORMER/minecraft@26.2/net.minecraft.client.main.Main.main(Main.java:167) [minecraft-patched-26.2.0.28-beta.jar:?] {}
+	at net.neoforged.fml.startup.Client.main(Client.java:19) [loader-11.0.13.jar:11.0] {}
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104) ~[?:?] {}
+	at java.base/java.lang.reflect.Method.invoke(Method.java:565) ~[?:?] {}
+	at net.neoforged.devlaunch.Main.main(Main.java:57) [DevLaunch-1.0.2.jar:?] {}
+
+
+-- System Details --
+Details:
+	Minecraft Version: 26.2
+	Minecraft Version ID: 26.2
+	Operating System: Windows 11 (amd64) version 10.0
+	Java Version: 25.0.3, Eclipse Adoptium
+	Java VM Version: OpenJDK 64-Bit Server VM (mixed mode, sharing), Eclipse Adoptium
+	Memory: 186801320 bytes (178 MiB) / 394264576 bytes (376 MiB) up to 4135583744 bytes (3944 MiB)
+	Memory (heap): init: 248MiB, used: 196MiB, committed: 376MiB, max: 3944MiB
+	Memory (non-head): init: 007MiB, used: 120MiB, committed: 122MiB, max: 000MiB
+	CPUs: 16
+	Processor Vendor: AuthenticAMD
+	Processor Name: AMD Ryzen 7 5800H with Radeon Graphics         
+	Identifier: AuthenticAMD Family 25 Model 80 Stepping 0
+	Microarchitecture: Zen 3
+	Frequency (GHz): 3.19
+	Number of physical packages: 1
+	Number of physical CPUs: 8
+	Number of logical CPUs: 16
+	Graphics card #0 name: AMD Radeon(TM) Graphics
+	Graphics card #0 vendor: Advanced Micro Devices, Inc.
+	Graphics card #0 VRAM (MiB): 512.00
+	Graphics card #0 deviceId: VideoController1
+	Graphics card #0 versionInfo: 31.0.21921.1000
+	Memory slot #0 capacity (MiB): 8192.00
+	Memory slot #0 clockSpeed (GHz): 3.20
+	Memory slot #0 type: DDR4
+	Memory slot #1 capacity (MiB): 8192.00
+	Memory slot #1 clockSpeed (GHz): 3.20
+	Memory slot #1 type: DDR4
+	Virtual memory max (MiB): 25501.19
+	Virtual memory used (MiB): 13928.48
+	Swap memory total (MiB): 9728.00
+	Swap memory used (MiB): 806.56
+	Space in storage for jna.tmpdir (MiB): <path not set>
+	Space in storage for org.lwjgl.system.SharedLibraryExtractPath (MiB): <path not set>
+	Space in storage for io.netty.native.workdir (MiB): <path not set>
+	Space in storage for java.io.tmpdir (MiB): available: 113128.33, total: 486858.31
+	Space in storage for workdir (MiB): available: 113128.33, total: 486858.31
+	Operating System Version: Microsoft Windows 11 (Home) build 26200
+	Process Elevated: false
+	Process Loads: Uptime: 8s, user: 29s (362.16%), kernel: 4s (48.62%), total: 32s (410.78%)
+	Process Virtual Size (MiB): 2231.43
+	Process Resident Size (MiB): 718.36
+	JVM Flags: 0 total; 
+	Debug Flags: 0 total; 
+	Launched Version: 26.2.0.28-beta
+	Backend library: LWJGL version 3.4.1+2
+	Window size: <not initialized>
+	Surface Info: <no surface>
+	GFLW Platform: null
+	Graphics Device: <none>
+	GL debug messages: <no renderer available>
+	Is Modded: Definitely; Client brand changed to 'neoforge'
+	Universe: 404
+	Type: Client
+	Locale: fr_FR
+	System encoding: Cp1252
+	File encoding: UTF-8
+	CPU: 16x AMD Ryzen 7 5800H with Radeon Graphics 
+	Class Processors: 
+		00,00%: neoforge:neoforge_dev_dist_cleaner
+		00,00%: neoforge:computing_frames (marker)
+		00,00%: neoforge:runtime_enum_extender
+		04,64%: neoforge:access_transformer
+		00,19%: neoforge:mixin
+		00,00%: neoforge:simple_processors_default (marker)
+		00,02%: neoforge.coremods:field_to_getter.net.minecraft.world.level.biome.biome
+		00,02%: neoforge.coremods:field_to_getter.net.minecraft.world.level.block.flowerpotblock
+		00,02%: neoforge.coremods:field_to_getter.net.minecraft.world.level.levelgen.structure.structure
+		00,38%: neoforge.coremods:method_redirector
+	Class Processors: 
+		00,00%: neoforge:neoforge_dev_dist_cleaner
+		00,00%: neoforge:computing_frames (marker)
+		00,00%: neoforge:runtime_enum_extender
+		04,64%: neoforge:access_transformer
+		00,19%: neoforge:mixin
+		00,00%: neoforge:simple_processors_default (marker)
+		00,02%: neoforge.coremods:field_to_getter.net.minecraft.world.level.biome.biome
+		00,02%: neoforge.coremods:field_to_getter.net.minecraft.world.level.block.flowerpotblock
+		00,02%: neoforge.coremods:field_to_getter.net.minecraft.world.level.levelgen.structure.structure
+		00,38%: neoforge.coremods:method_redirector

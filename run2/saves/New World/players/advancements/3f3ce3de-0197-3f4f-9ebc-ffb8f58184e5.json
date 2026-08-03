@@ -1,0 +1,35 @@
+{
+  "minecraft:recipes/decorations/crafting_table": {
+    "criteria": {
+      "unlock_right_away": "2026-07-22 17:01:08 +0200"
+    },
+    "done": true
+  },
+  "minecraft:adventure/adventuring_time": {
+    "criteria": {
+      "minecraft:stony_shore": "2026-07-22 17:01:08 +0200"
+    },
+    "done": false
+  },
+  "minecraft:nether/explore_nether": {
+    "criteria": {
+      "minecraft:crimson_forest": "2026-07-22 19:07:09 +0200",
+      "minecraft:nether_wastes": "2026-07-22 19:05:20 +0200",
+      "minecraft:warped_forest": "2026-07-22 19:06:55 +0200"
+    },
+    "done": false
+  },
+  "minecraft:story/enter_the_nether": {
+    "criteria": {
+      "entered_nether": "2026-07-22 19:05:19 +0200"
+    },
+    "done": true
+  },
+  "minecraft:nether/root": {
+    "criteria": {
+      "entered_nether": "2026-07-22 19:05:19 +0200"
+    },
+    "done": true
+  },
+  "DataVersion": 4903
+}
