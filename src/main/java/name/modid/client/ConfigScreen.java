@@ -61,7 +61,9 @@ public class ConfigScreen extends Screen {
 
         this.addRenderableWidget(
                 Button.builder(Component.translatable("gui.xaeroheadtracker.back"), bouton -> {
-                            this.minecraft.gui.setScreen(this.ecranPrecedent);
+                            if (this.minecraft != null) {
+                                this.minecraft.setScreen(this.ecranPrecedent);
+                            }
                         })
                         .bounds(centreX - 100, centreY + 60, 200, 20)
                         .build()

@@ -42,7 +42,7 @@ public class XaeroHeadTracker {
 					// On exécute le changement de manière synchronisée
 					context.enqueueWork(() -> {
 						UUID uuidJoueur = context.player().getUUID();
-						if (payload.isSharing()) {
+						if (payload.sharePosition()) {
 							joueursCaches.remove(uuidJoueur);
 						} else {
 							joueursCaches.add(uuidJoueur);
