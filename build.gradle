@@ -21,6 +21,12 @@ loom {
 			sourceSet sourceSets.client
 		}
 	}
+
+	runs {
+		client {
+			programArgs "--quickPlaySingleplayer", "New World (6)"
+		}
+	}
 }
 
 dependencies {
@@ -28,7 +34,7 @@ dependencies {
 	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 
-	implementation "xaero.map:xaeroworldmap-fabric-26.2:1.41.3"
+	implementation "xaero.map:xaeroworldmap-fabric-26.3:1.47.0"
 }
 
 processResources {
@@ -45,6 +51,9 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(25)
+	}
 	// Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
 	// if it is present.
 	// If you remove this line, sources will not be generated.
@@ -54,9 +63,13 @@ java {
 	targetCompatibility = JavaVersion.VERSION_25
 }
 
+tasks.withType(JavaExec).configureEach {
+	javaLauncher = javaToolchains.launcherFor(java.toolchain)
+}
+
 jar {
 	archiveBaseName.set("XaeroHeadTracker")
-	archiveClassifier.set("fabric-26.2")
+	archiveClassifier.set("fabric-26.3")
 	archiveVersion.set(project.version)
 
 	from("LICENSE") {
