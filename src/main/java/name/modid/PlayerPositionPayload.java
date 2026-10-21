@@ -9,7 +9,7 @@ import net.minecraft.resources.Identifier;
 
 import java.util.UUID;
 
-public record PlayerPositionPayload(String pseudo, UUID uuid, double x, double y, double z) implements CustomPacketPayload {
+public record PlayerPositionPayload(String pseudo, UUID uuid, double x, double y, double z, String dimension) implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<PlayerPositionPayload> TYPE = new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath("xaeroheadtracker", "player_position"));
 
@@ -19,6 +19,7 @@ public record PlayerPositionPayload(String pseudo, UUID uuid, double x, double y
             ByteBufCodecs.DOUBLE, PlayerPositionPayload::x,
             ByteBufCodecs.DOUBLE, PlayerPositionPayload::y,
             ByteBufCodecs.DOUBLE, PlayerPositionPayload::z,
+            ByteBufCodecs.STRING_UTF8, PlayerPositionPayload::dimension,
             PlayerPositionPayload::new
     );
 

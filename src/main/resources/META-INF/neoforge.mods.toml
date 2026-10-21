@@ -23,13 +23,13 @@ side="BOTH"
 [[dependencies.xaeroheadtracker]]
 modId="minecraft"
 type="required"
-versionRange="[26.2,)"
+versionRange="[26.3,)"
 ordering="NONE"
 side="BOTH"
 
 [[dependencies.xaeroheadtracker]]
 modId="xaeroworldmap"
 type="required"
-versionRange="[1.44.2,)"
+versionRange="[1.47.1,)"
 ordering="AFTER"
 side="CLIENT"
