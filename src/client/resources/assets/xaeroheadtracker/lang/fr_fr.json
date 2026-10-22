@@ -7,5 +7,10 @@
   "gui.xaeroheadtracker.back": "Retour",
   "gui.xaeroheadtracker.yes": "Oui",
   "gui.xaeroheadtracker.no": "Non",
+  "gui.xaeroheadtracker.search": "Rechercher un joueur...",
+  "gui.xaeroheadtracker.show_others": "Autres joueurs : ",
+  "gui.xaeroheadtracker.section_shown": "Joueurs affichés (%s)",
+  "gui.xaeroheadtracker.section_others": "Autres joueurs (%s)",
+  "gui.xaeroheadtracker.no_players": "Aucun joueur trouvé",
   "key.xaeroheadtracker.open_settings": "Paramètres Head Tracker"
 }
