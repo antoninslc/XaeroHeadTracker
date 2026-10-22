@@ -3,6 +3,7 @@ package name.modid.client;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.multiplayer.PlayerInfo;
@@ -30,7 +31,10 @@ public class ConfigScreen extends Screen {
 
     // Mise en page
     private static final int MARGE = 10;
-    private static final int LARGEUR_COLONNE_DROITE = 160;
+    private static final int LARGEUR_COLONNE_DROITE = 180;
+    private static final int Y_ENTETES = 26; // Titres des colonnes
+    private static final int Y_WIDGETS = 38; // Premiere ligne de widgets
+    private static final int Y_CONFIDENTIALITE = 92; // Titre de la section confidentialite (colonne de droite)
     private static final int HAUTEUR_LIGNE = 20;
     private static final int HAUTEUR_ENTETE = 14;
     private static final int TAILLE_TETE = 16;
@@ -86,9 +90,9 @@ public class ConfigScreen extends Screen {
         int principaleLargeur = droiteX - MARGE * 2;
 
         // Colonne principale : barre de recherche + bouton "Afficher les autres joueurs"
-        int largeurBoutonAutres = 130;
+        int largeurBoutonAutres = 170;
         int largeurRecherche = principaleLargeur - largeurBoutonAutres - 4;
-        this.barreRecherche = new EditBox(this.font, MARGE, 28, largeurRecherche, 20, Component.translatable("gui.xaeroheadtracker.search"));
+        this.barreRecherche = new EditBox(this.font, MARGE, Y_WIDGETS, largeurRecherche, 20, Component.translatable("gui.xaeroheadtracker.search"));
         this.barreRecherche.setHint(Component.translatable("gui.xaeroheadtracker.search"));
         this.barreRecherche.setValue(this.recherche);
         this.barreRecherche.setResponder(texte -> {
@@ -102,18 +106,21 @@ public class ConfigScreen extends Screen {
                 Button.builder(getTexteBoutonAutres(), bouton -> {
                             PlayerVisibilityConfig.INSTANCE.definirAfficherAutres(!PlayerVisibilityConfig.INSTANCE.getAfficherAutres());
                             bouton.setMessage(getTexteBoutonAutres());
+                            reconstruireLignes(); // Le titre de la section du bas depend de ce reglage
                         })
-                        .bounds(MARGE + largeurRecherche + 4, 28, largeurBoutonAutres, 20)
+                        .bounds(MARGE + largeurRecherche + 4, Y_WIDGETS, largeurBoutonAutres, 20)
+                        .tooltip(Tooltip.create(Component.translatable("gui.xaeroheadtracker.show_others.tooltip")))
                         .build()
         );
 
+        // Ligne d'aide sous la recherche, puis la liste
         this.listeX = MARGE;
-        this.listeY = 54;
+        this.listeY = Y_WIDGETS + 38;
         this.listeLargeur = principaleLargeur;
         this.listeHauteur = this.height - this.listeY - MARGE;
 
-        // Colonne de droite : reglages existants
-        int y = 28;
+        // Colonne de droite : reglages existants, regroupes par theme
+        int y = Y_WIDGETS;
 
         // Bouton 1 : Activer/Désactiver les Têtes
         this.addRenderableWidget(
@@ -123,6 +130,7 @@ public class ConfigScreen extends Screen {
                             bouton.setMessage(getTexteBoutonTetes()); // On met à jour le texte
                         })
                         .bounds(droiteX, y, LARGEUR_COLONNE_DROITE, 20)
+                        .tooltip(Tooltip.create(Component.translatable("gui.xaeroheadtracker.heads.tooltip")))
                         .build()
         );
 
@@ -134,6 +142,7 @@ public class ConfigScreen extends Screen {
                             bouton.setMessage(getTexteBoutonNoms());
                         })
                         .bounds(droiteX, y + 24, LARGEUR_COLONNE_DROITE, 20)
+                        .tooltip(Tooltip.create(Component.translatable("gui.xaeroheadtracker.names.tooltip")))
                         .build()
         );
 
@@ -147,7 +156,8 @@ public class ConfigScreen extends Screen {
                             // On envoie instantanément la nouvelle décision au serveur !
                             ClientPlayNetworking.send(new UpdateShareStatusPayload(ModConfig.INSTANCE.sharePosition));
                         })
-                        .bounds(droiteX, y + 48, LARGEUR_COLONNE_DROITE, 20)
+                        .bounds(droiteX, Y_CONFIDENTIALITE + 12, LARGEUR_COLONNE_DROITE, 20)
+                        .tooltip(Tooltip.create(Component.translatable("gui.xaeroheadtracker.share.tooltip")))
                         .build()
         );
 
@@ -222,7 +232,9 @@ public class ConfigScreen extends Screen {
 
         lignes.add(new Ligne(Component.translatable("gui.xaeroheadtracker.section_shown", coches.size())));
         lignes.addAll(coches);
-        lignes.add(new Ligne(Component.translatable("gui.xaeroheadtracker.section_others", autres.size())));
+        lignes.add(new Ligne(Component.translatable(PlayerVisibilityConfig.INSTANCE.getAfficherAutres()
+                ? "gui.xaeroheadtracker.section_others_shown"
+                : "gui.xaeroheadtracker.section_others_hidden", autres.size())));
         lignes.addAll(autres);
 
         limiterDefilement();
@@ -247,6 +259,15 @@ public class ConfigScreen extends Screen {
 
         // Titre
         graphics.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFFFF);
+
+        // Titres des colonnes et des sections
+        int droiteX = this.width - MARGE - LARGEUR_COLONNE_DROITE;
+        graphics.text(this.font, Component.translatable("gui.xaeroheadtracker.header_players"), MARGE, Y_ENTETES, 0xFFFFFF55);
+        graphics.text(this.font, Component.translatable("gui.xaeroheadtracker.header_display"), droiteX, Y_ENTETES, 0xFFFFFF55);
+        graphics.text(this.font, Component.translatable("gui.xaeroheadtracker.header_privacy"), droiteX, Y_CONFIDENTIALITE, 0xFFFFFF55);
+
+        // Ligne d'aide sous la recherche
+        graphics.text(this.font, Component.translatable("gui.xaeroheadtracker.help"), MARGE, Y_WIDGETS + 25, 0xFFAAAAAA);
 
         // Fond de la liste
         graphics.fill(listeX, listeY, listeX + listeLargeur, listeY + listeHauteur, 0x80000000);
