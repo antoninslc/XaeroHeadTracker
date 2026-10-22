@@ -21,6 +21,7 @@ neoForge {
 			client()
 			systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
 			programArguments.addAll('--username', 'Joueur1')
+			programArguments.addAll('--quickPlaySingleplayer', 'New World (6)')
 		}
 		client2 {
 			client()
