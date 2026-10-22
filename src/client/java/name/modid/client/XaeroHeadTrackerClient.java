@@ -58,10 +58,22 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 
 	private static final Identifier EYE_TEXTURE = Identifier.fromNamespaceAndPath("xaeroheadtracker", "textures/gui/eye.png");
 
+	/** Cle de stockage du serveur courant : adresse en multijoueur, nom du monde en solo. */
+	private static String identifierServeur(Minecraft client) {
+		if (client.getSingleplayerServer() != null) {
+			return "solo:" + client.getSingleplayerServer().getWorldData().getLevelName();
+		}
+		if (client.getCurrentServer() != null) {
+			return client.getCurrentServer().ip;
+		}
+		return null;
+	}
+
 	@Override
 	public void onInitializeClient() {
 
 		ModConfig.INSTANCE.charger();
+		PlayerVisibilityConfig.INSTANCE.charger();
 
 		// On demande à Fabric si l'un des deux mods Minimap de Xaero est présent dans le dossier mods
 		isMinimapInstalled = FabricLoader.getInstance().isModLoaded("xaerominimap")
@@ -71,6 +83,9 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
 			// On utilise la valeur qui a été chargée depuis le JSON
 			ClientPlayNetworking.send(new UpdateShareStatusPayload(ModConfig.INSTANCE.sharePosition));
+
+			// On identifie le serveur (ou le monde solo) pour charger les joueurs choisis
+			PlayerVisibilityConfig.INSTANCE.definirServeurCourant(identifierServeur(client));
 		});
 
 		// 1. On crée et on enregistre le raccourci (avec KeyMappingHelper !)
