@@ -269,6 +269,12 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 							continue;
 						}
 
+						// Filtre des joueurs choisis : on ignore les joueurs masques
+						if (!PlayerVisibilityConfig.INSTANCE.estVisible(uuidJoueur)) {
+							continue;
+						}
+						PlayerVisibilityConfig.INSTANCE.mettreAJourPseudo(uuidJoueur, pseudo);
+
 						double drawX = screen.width / 2.0 + (pos.x - cameraX) * scale / screenScale;
 						double drawY = screen.height / 2.0 + (pos.z - cameraZ) * scale / screenScale;
 
