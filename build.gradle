@@ -35,6 +35,8 @@ dependencies {
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 
 	implementation "xaero.map:xaeroworldmap-fabric-26.2:1.41.3"
+	// World Map 1.41.3 embarque xaerolib 1.4.3 : la derniere (1.8.3) a retire des methodes et plante au lancement
+	implementation("xaero.lib:xaerolib-fabric-26.2") { version { strictly "1.4.3" } }
 }
 
 processResources {
