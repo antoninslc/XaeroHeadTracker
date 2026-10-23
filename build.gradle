@@ -21,7 +21,7 @@ neoForge {
 			client()
 			systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
 			programArguments.addAll('--username', 'Joueur1')
-			programArguments.addAll('--quickPlaySingleplayer', 'New World (6)')
+			programArguments.addAll('--quickPlaySingleplayer', "Test ${project.minecraft_version}")
 		}
 		client2 {
 			client()
@@ -98,3 +98,17 @@ publishing {
 	repositories {
 	}
 }
+
+// Dev : cree le monde de test "Test <version>" depuis le modele dev/test-world s'il n'existe pas encore
+tasks.register('prepareTestWorld') {
+	def monde = file("run/saves/Test ${project.minecraft_version}")
+	def modele = file('dev/test-world')
+	onlyIf { !monde.exists() && modele.exists() }
+	doLast {
+		copy {
+			from modele
+			into monde
+		}
+	}
+}
+tasks.matching { it.name == 'runClient' }.configureEach { dependsOn 'prepareTestWorld' }

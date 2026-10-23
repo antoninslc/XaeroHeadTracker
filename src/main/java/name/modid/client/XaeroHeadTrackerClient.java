@@ -11,7 +11,10 @@ import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import net.minecraft.client.multiplayer.PlayerInfo;
+import net.minecraft.client.resources.DefaultPlayerSkin;
+import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.client.resources.PlayerSkin;
@@ -19,7 +22,9 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
@@ -29,7 +34,9 @@ import xaero.map.gui.GuiMap;
 import xaero.map.graphics.MapRenderHelper;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 public class XaeroHeadTrackerClient {
@@ -37,6 +44,33 @@ public class XaeroHeadTrackerClient {
 	public static final Map<String, PositionData> positionsJoueurs = new HashMap<>();
 
 	private static KeyMapping toucheParametres;
+
+	private static final String BOT_TEST_NAME = "BotTest";
+	private static final UUID BOT_TEST_UUID = UUID.fromString("00000000-0000-0000-0000-000000000001");
+	private static boolean simulerBotEnLigne = false;
+	// Bots crees par /xht simulate many, maintenus en ligne a chaque tick
+	private static final Set<String> botsMultiplesEnLigne = new HashSet<>();
+	private static final Set<String> botsMultiples = new HashSet<>();
+
+	/** Retire de la carte les bots crees par /xht simulate many. */
+	private static void supprimerBotsMultiples() {
+		for (String nom : botsMultiples) {
+			positionsJoueurs.remove(nom);
+		}
+		botsMultiples.clear();
+		botsMultiplesEnLigne.clear();
+	}
+
+	/** Cle de stockage du serveur courant : adresse en multijoueur, nom du monde en solo. */
+	private static String identifierServeur(Minecraft client) {
+		if (client.getSingleplayerServer() != null) {
+			return "solo:" + client.getSingleplayerServer().getWorldData().getLevelName();
+		}
+		if (client.getCurrentServer() != null) {
+			return client.getCurrentServer().ip;
+		}
+		return null;
+	}
 
 	private static final ResourceLocation EYE_TEXTURE = ResourceLocation.fromNamespaceAndPath("xaeroheadtracker", "textures/gui/eye.png");
 
@@ -47,6 +81,7 @@ public class XaeroHeadTrackerClient {
 		@SubscribeEvent
 		public static void onClientSetup(FMLClientSetupEvent event) {
 			ModConfig.INSTANCE.charger();
+			PlayerVisibilityConfig.INSTANCE.charger();
 		}
 
 		@SubscribeEvent
@@ -54,7 +89,7 @@ public class XaeroHeadTrackerClient {
 			toucheParametres = new KeyMapping(
 					"key.xaeroheadtracker.open_settings",
 					GLFW.GLFW_KEY_H,
-					"key.categories.xaeroheadtracker"
+					"key.category.xaeroheadtracker.parametres"
 			);
 			event.register(toucheParametres);
 		}
@@ -76,12 +111,110 @@ public class XaeroHeadTrackerClient {
 					}
 				}
 			}
+
+			for (String nomBot : botsMultiplesEnLigne) {
+				PositionData pos = positionsJoueurs.get(nomBot);
+				if (pos != null) {
+					pos.timestamp = System.currentTimeMillis();
+				}
+			}
+
+			if (simulerBotEnLigne) {
+				PositionData botPos = positionsJoueurs.get(BOT_TEST_NAME);
+				if (botPos != null) {
+					botPos.timestamp = System.currentTimeMillis();
+				}
+			}
+		}
+
+		@SubscribeEvent
+		public static void onRegisterClientCommands(RegisterClientCommandsEvent event) {
+			if (FMLEnvironment.production) {
+				return;
+			}
+			event.getDispatcher().register(Commands.literal("xht")
+					.then(Commands.literal("simulate")
+							.then(Commands.literal("live").executes(ctx -> {
+								Minecraft client = Minecraft.getInstance();
+								var player = client.player;
+								if (player == null) return 0;
+								PositionData botPos = new PositionData(player.getX() + 15.0, player.getY(), player.getZ() + 15.0, BOT_TEST_UUID);
+								if (client.getConnection() != null) {
+									PlayerInfo myInfo = client.getConnection().getPlayerInfo(player.getUUID());
+									if (myInfo != null) {
+										botPos.cachedSkin = myInfo.getSkin();
+									}
+								}
+								positionsJoueurs.put(BOT_TEST_NAME, botPos);
+								simulerBotEnLigne = true;
+								ctx.getSource().sendSuccess(() -> Component.literal("§a[XHT Dev] BotTest en ligne créé à +15 blocs de ta position !"), false);
+								return 1;
+							}))
+							.then(Commands.literal("disconnect").executes(ctx -> {
+								simulerBotEnLigne = false;
+								PositionData botPos = positionsJoueurs.get(BOT_TEST_NAME);
+								if (botPos != null) {
+									botPos.timestamp = System.currentTimeMillis() - 5000L;
+									ctx.getSource().sendSuccess(() -> Component.literal("§e[XHT Dev] BotTest déconnecté (statut < 1 min) !"), false);
+								} else {
+									ctx.getSource().sendFailure(Component.literal("Lance d'abord /xht simulate live"));
+								}
+								return 1;
+							}))
+							.then(Commands.literal("old").executes(ctx -> {
+								simulerBotEnLigne = false;
+								PositionData botPos = positionsJoueurs.get(BOT_TEST_NAME);
+								if (botPos != null) {
+									botPos.timestamp = System.currentTimeMillis() - 5 * 60 * 1000L;
+									ctx.getSource().sendSuccess(() -> Component.literal("§7[XHT Dev] BotTest déconnecté depuis 5 min !"), false);
+								} else {
+									ctx.getSource().sendFailure(Component.literal("Lance d'abord /xht simulate live"));
+								}
+								return 1;
+							}))
+							// Cree plusieurs bots autour du joueur : 2 sur 3 en ligne, les autres deconnectes depuis quelques minutes
+							.then(Commands.literal("many")
+									.then(Commands.argument("nombre", IntegerArgumentType.integer(1, 100)).executes(ctx -> {
+										int nombre = IntegerArgumentType.getInteger(ctx, "nombre");
+										var player = Minecraft.getInstance().player;
+										if (player == null) return 0;
+										supprimerBotsMultiples();
+										for (int i = 1; i <= nombre; i++) {
+											String nom = "Bot" + i;
+											UUID uuid = UUID.fromString(String.format("00000000-0000-0000-0001-%012d", i));
+											// Repartition en cercle autour du joueur, rayon 20 a 60 blocs
+											double angle = 2 * Math.PI * i / nombre;
+											double rayon = 20.0 + (i % 5) * 10.0;
+											PositionData pos = new PositionData(player.getX() + Math.cos(angle) * rayon, player.getY(),
+													player.getZ() + Math.sin(angle) * rayon, uuid);
+											pos.cachedSkin = DefaultPlayerSkin.get(uuid);
+											if (i % 3 == 0) {
+												pos.timestamp = System.currentTimeMillis() - i * 60 * 1000L;
+											} else {
+												botsMultiplesEnLigne.add(nom);
+											}
+											positionsJoueurs.put(nom, pos);
+											botsMultiples.add(nom);
+										}
+										ctx.getSource().sendSuccess(() -> Component.literal("§a[XHT Dev] " + nombre + " bots créés (Bot1 a Bot" + nombre + "), 1 sur 3 déconnecté."), false);
+										return 1;
+									})))
+							.then(Commands.literal("clear").executes(ctx -> {
+								simulerBotEnLigne = false;
+								positionsJoueurs.remove(BOT_TEST_NAME);
+								supprimerBotsMultiples();
+								ctx.getSource().sendSuccess(() -> Component.literal("§c[XHT Dev] BotTest et bots multiples supprimés de la carte."), false);
+								return 1;
+							}))
+					)
+			);
 		}
 
 		@SubscribeEvent
 		public static void onPlayerJoin(ClientPlayerNetworkEvent.LoggingIn event) {
 			// CORRECTION : Envoi du paquet via la connexion native du client
 			Minecraft client = Minecraft.getInstance();
+			PlayerVisibilityConfig.INSTANCE.definirServeurCourant(identifierServeur(client));
 			if (client.getConnection() != null) {
 				client.getConnection().send(new UpdateShareStatusPayload(ModConfig.INSTANCE.sharePosition));
 			}
@@ -93,7 +226,7 @@ public class XaeroHeadTrackerClient {
 				double mouseX = event.getMouseX();
 				double mouseY = event.getMouseY();
 				// Le bouton est à x=7, y=32, largeur=16, hauteur=16
-				if (mouseX >= 7 && mouseX <= 23 && mouseY >= 32 && mouseY <= 48 && event.getButton() == 0) {
+				if (mouseX >= 7 && mouseX <= 23 && mouseY >= 32 && mouseY <= 48 && event.getButton() == 0 && !GuiMap.hiddenUI) {
 					Minecraft.getInstance().setScreen(new ConfigScreen(event.getScreen()));
 					event.setCanceled(true);
 				}
@@ -126,6 +259,13 @@ public class XaeroHeadTrackerClient {
 					if (client.player != null && pos.uuid.equals(client.player.getUUID())) {
 						continue;
 					}
+
+					// Filtre des joueurs choisis : on ignore les joueurs masques
+					String pseudo = entree.getKey();
+					if (!PlayerVisibilityConfig.INSTANCE.estVisible(pos.uuid)) {
+						continue;
+					}
+					PlayerVisibilityConfig.INSTANCE.mettreAJourPseudo(pos.uuid, pseudo);
 
 					double drawX = screen.width / 2.0 + (pos.x - cameraX) * scale / screenScale;
 					double drawY = screen.height / 2.0 + (pos.z - cameraZ) * scale / screenScale;
@@ -160,14 +300,20 @@ public class XaeroHeadTrackerClient {
 							}
 						}
 
+						boolean avecTete = ModConfig.INSTANCE.showHeads;
+						// Sans tete, le pseudo est centre sur la position du joueur
+						int basBloc = avecTete ? (int) drawY + headSize / 2 : (int) drawY + 5;
+
 						if (ModConfig.INSTANCE.showNames) {
-							String pseudo = entree.getKey();
+							int pseudoY = avecTete ? (int) drawY - headSize / 2 - 10 : (int) drawY - 4;
 							guiGraphics.drawCenteredString(
 									client.font, pseudo,
-									(int) drawX, (int) drawY - headSize / 2 - 10,
+									(int) drawX, pseudoY,
 									-1
 							);
+						}
 
+						if (ModConfig.INSTANCE.showNames || avecTete) {
 							long msEcoulees = tempsActuel - pos.timestamp;
 							long minutesEcoulees = msEcoulees / 60000L;
 
@@ -185,7 +331,7 @@ public class XaeroHeadTrackerClient {
 							guiGraphics.pose().scale(echelle, echelle, 1.0F);
 
 							int cibleX = (int) (drawX / echelle);
-							int cibleY = (int) ((drawY + headSize / 2 + 2) / echelle);
+							int cibleY = (int) ((basBloc + 2) / echelle);
 
 							guiGraphics.drawCenteredString(
 									client.font, texteStatut,
@@ -214,6 +360,10 @@ public class XaeroHeadTrackerClient {
 
 					@Override
 					public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+						// F1 : l'oeil disparait comme les boutons de Xaero
+						if (GuiMap.hiddenUI) {
+							return;
+						}
 						int decalageY = this.isHovered() ? -1 : 0;
 						guiGraphics.blit(
 								EYE_TEXTURE,
