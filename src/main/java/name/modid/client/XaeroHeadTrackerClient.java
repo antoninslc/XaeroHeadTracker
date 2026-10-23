@@ -412,7 +412,8 @@ public class XaeroHeadTrackerClient {
 				}
 			}
 
-			if (boutonOeilActif != null) {
+			// F1 : l'oeil disparait comme les boutons de Xaero
+			if (boutonOeilActif != null && !client.gui.hud.isHidden()) {
 				boutonOeilActif.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
 			}
 		}
@@ -420,7 +421,8 @@ public class XaeroHeadTrackerClient {
 		@SubscribeEvent
 		public static void onMouseButtonPressedPre(ScreenEvent.MouseButtonPressed.Pre event) {
 			Screen screen = event.getScreen();
-			if (screen.getClass().getName().contains("GuiMap") && boutonOeilActif != null) {
+			if (screen.getClass().getName().contains("GuiMap") && boutonOeilActif != null
+					&& !Minecraft.getInstance().gui.hud.isHidden()) {
 				MouseButtonEvent mouseEvent = event.getMouseButtonEvent();
 				if (boutonOeilActif.isMouseOver(mouseEvent.x(), mouseEvent.y())) {
 					boutonOeilActif.mouseClicked(mouseEvent, event.isDoubleClick());
