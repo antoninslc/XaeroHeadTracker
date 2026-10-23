@@ -28,6 +28,11 @@ import xaero.map.gui.GuiMap;
 import xaero.map.graphics.MapRenderHelper;
 
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
+
+import com.mojang.brigadier.arguments.IntegerArgumentType;
+import net.minecraft.client.resources.DefaultPlayerSkin;
 import java.util.Map;
 import java.util.UUID;
 
@@ -49,6 +54,9 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 	private static final String BOT_TEST_NAME = "BotTest";
 	private static final UUID BOT_TEST_UUID = UUID.fromString("00000000-0000-0000-0000-000000000001");
 	private static boolean simulerBotEnLigne = false;
+	// Bots supplementaires crees par /xht simulate many, maintenus en ligne a chaque tick
+	private static final Set<String> botsMultiplesEnLigne = new HashSet<>();
+	private static final Set<String> botsMultiples = new HashSet<>();
 
 	// 1. On déclare officiellement notre propre catégorie dans les paramètres du jeu
 	private static final KeyMapping.Category CATEGORIE_MOD = KeyMapping.Category.register(Identifier.fromNamespaceAndPath("xaeroheadtracker", "parametres"));
@@ -57,6 +65,15 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 	private static KeyMapping toucheParametres;
 
 	private static final Identifier EYE_TEXTURE = Identifier.fromNamespaceAndPath("xaeroheadtracker", "textures/gui/eye.png");
+
+	/** Retire de la carte les bots crees par /xht simulate many. */
+	private static void supprimerBotsMultiples() {
+		for (String nom : botsMultiples) {
+			positionsJoueurs.remove(nom);
+		}
+		botsMultiples.clear();
+		botsMultiplesEnLigne.clear();
+	}
 
 	/** Cle de stockage du serveur courant : adresse en multijoueur, nom du monde en solo. */
 	private static String identifierServeur(Minecraft client) {
@@ -102,6 +119,13 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 					client.gui.setScreen(new ConfigScreen(null));
 				} else if (client.gui.screen().getClass().getName().contains("GuiMap")) {
 					client.gui.setScreen(new ConfigScreen(client.gui.screen()));
+				}
+			}
+
+			for (String nomBot : botsMultiplesEnLigne) {
+				PositionData pos = positionsJoueurs.get(nomBot);
+				if (pos != null) {
+					pos.timestamp = System.currentTimeMillis();
 				}
 			}
 
@@ -156,10 +180,38 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 									}
 									return 1;
 								}))
+								// Cree plusieurs bots autour du joueur : 2 sur 3 en ligne, les autres deconnectes depuis quelques minutes
+								.then(ClientCommands.literal("many")
+										.then(ClientCommands.argument("nombre", IntegerArgumentType.integer(1, 100)).executes(ctx -> {
+											int nombre = IntegerArgumentType.getInteger(ctx, "nombre");
+											var player = ctx.getSource().getPlayer();
+											String dim = player.level().dimension().identifier().toString();
+											supprimerBotsMultiples();
+											for (int i = 1; i <= nombre; i++) {
+												String nom = "Bot" + i;
+												UUID uuid = UUID.fromString(String.format("00000000-0000-0000-0001-%012d", i));
+												// Repartition en cercle autour du joueur, rayon 20 a 60 blocs
+												double angle = 2 * Math.PI * i / nombre;
+												double rayon = 20.0 + (i % 5) * 10.0;
+												PositionData pos = new PositionData(player.getX() + Math.cos(angle) * rayon, player.getY(),
+														player.getZ() + Math.sin(angle) * rayon, uuid, dim);
+												pos.texturePeau = DefaultPlayerSkin.get(uuid).body().texturePath();
+												if (i % 3 == 0) {
+													pos.timestamp = System.currentTimeMillis() - i * 60 * 1000L;
+												} else {
+													botsMultiplesEnLigne.add(nom);
+												}
+												positionsJoueurs.put(nom, pos);
+												botsMultiples.add(nom);
+											}
+											ctx.getSource().sendFeedback(Component.literal("§a[XHT Dev] " + nombre + " bots créés (Bot1 a Bot" + nombre + "), 1 sur 3 déconnecté."));
+											return 1;
+										})))
 								.then(ClientCommands.literal("clear").executes(ctx -> {
 									simulerBotEnLigne = false;
 									positionsJoueurs.remove(BOT_TEST_NAME);
-									ctx.getSource().sendFeedback(Component.literal("§c[XHT Dev] BotTest supprimé de la carte."));
+									supprimerBotsMultiples();
+									ctx.getSource().sendFeedback(Component.literal("§c[XHT Dev] BotTest et bots multiples supprimés de la carte."));
 									return 1;
 								}))
 						)
