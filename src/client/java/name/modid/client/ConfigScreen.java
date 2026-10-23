@@ -31,7 +31,10 @@ public class ConfigScreen extends Screen {
 
     // Mise en page
     private static final int MARGE = 10;
-    private static final int LARGEUR_COLONNE_DROITE = 180;
+    private static final int LARGEUR_DROITE_MAX = 180;
+    private static final int LARGEUR_DROITE_MIN = 110;
+    private static final int LARGEUR_BOUTON_AUTRES = 170;
+    private static final int LARGEUR_RECHERCHE_MIN = 120;
     private static final int Y_ENTETES = 26; // Titres des colonnes
     private static final int Y_WIDGETS = 38; // Premiere ligne de widgets
     private static final int Y_CONFIDENTIALITE = 92; // Titre de la section confidentialite (colonne de droite)
@@ -42,6 +45,12 @@ public class ConfigScreen extends Screen {
 
     private EditBox barreRecherche;
     private String recherche = "";
+
+    // Colonne de droite (calculee selon la taille de l'ecran)
+    private int droiteX, largeurDroite;
+    // Texte d'aide renvoye a la ligne selon la largeur disponible
+    private List<net.minecraft.util.FormattedCharSequence> lignesAide = new ArrayList<>();
+    private int aideY;
 
     // Zone de la liste des joueurs
     private int listeX, listeY, listeLargeur, listeHauteur;
@@ -86,12 +95,18 @@ public class ConfigScreen extends Screen {
 
     @Override
     protected void init() {
-        int droiteX = this.width - MARGE - LARGEUR_COLONNE_DROITE;
+        // Colonne de droite : environ 38% de l'ecran, bornee entre un minimum et un maximum
+        this.largeurDroite = Math.max(LARGEUR_DROITE_MIN, Math.min(LARGEUR_DROITE_MAX, (int) (this.width * 0.38)));
+        this.droiteX = this.width - MARGE - largeurDroite;
         int principaleLargeur = droiteX - MARGE * 2;
 
         // Colonne principale : barre de recherche + bouton "Afficher les autres joueurs"
-        int largeurBoutonAutres = 170;
-        int largeurRecherche = principaleLargeur - largeurBoutonAutres - 4;
+        // Sur un petit ecran, le bouton passe sous la barre de recherche au lieu d'etre a cote
+        boolean empile = principaleLargeur - LARGEUR_BOUTON_AUTRES - 4 < LARGEUR_RECHERCHE_MIN;
+        int largeurBoutonAutres = empile ? principaleLargeur : LARGEUR_BOUTON_AUTRES;
+        int largeurRecherche = empile ? principaleLargeur : principaleLargeur - largeurBoutonAutres - 4;
+        int boutonAutresX = empile ? MARGE : MARGE + largeurRecherche + 4;
+        int boutonAutresY = empile ? Y_WIDGETS + 24 : Y_WIDGETS;
         this.barreRecherche = new EditBox(this.font, MARGE, Y_WIDGETS, largeurRecherche, 20, Component.translatable("gui.xaeroheadtracker.search"));
         this.barreRecherche.setHint(Component.translatable("gui.xaeroheadtracker.search"));
         this.barreRecherche.setValue(this.recherche);
@@ -108,14 +123,16 @@ public class ConfigScreen extends Screen {
                             bouton.setMessage(getTexteBoutonAutres());
                             reconstruireLignes(); // Le titre de la section du bas depend de ce reglage
                         })
-                        .bounds(MARGE + largeurRecherche + 4, Y_WIDGETS, largeurBoutonAutres, 20)
+                        .bounds(boutonAutresX, boutonAutresY, largeurBoutonAutres, 20)
                         .tooltip(Tooltip.create(Component.translatable("gui.xaeroheadtracker.show_others.tooltip")))
                         .build()
         );
 
         // Ligne d'aide sous la recherche, puis la liste
         this.listeX = MARGE;
-        this.listeY = Y_WIDGETS + 38;
+        this.aideY = boutonAutresY + 25;
+        this.lignesAide = this.font.split(Component.translatable("gui.xaeroheadtracker.help"), principaleLargeur);
+        this.listeY = aideY + lignesAide.size() * 10 + 3;
         this.listeLargeur = principaleLargeur;
         this.listeHauteur = this.height - this.listeY - MARGE;
 
@@ -129,7 +146,7 @@ public class ConfigScreen extends Screen {
                             ModConfig.INSTANCE.sauvegarder(); // On sauvegarde dans le JSON
                             bouton.setMessage(getTexteBoutonTetes()); // On met à jour le texte
                         })
-                        .bounds(droiteX, y, LARGEUR_COLONNE_DROITE, 20)
+                        .bounds(droiteX, y, largeurDroite, 20)
                         .tooltip(Tooltip.create(Component.translatable("gui.xaeroheadtracker.heads.tooltip")))
                         .build()
         );
@@ -141,7 +158,7 @@ public class ConfigScreen extends Screen {
                             ModConfig.INSTANCE.sauvegarder();
                             bouton.setMessage(getTexteBoutonNoms());
                         })
-                        .bounds(droiteX, y + 24, LARGEUR_COLONNE_DROITE, 20)
+                        .bounds(droiteX, y + 24, largeurDroite, 20)
                         .tooltip(Tooltip.create(Component.translatable("gui.xaeroheadtracker.names.tooltip")))
                         .build()
         );
@@ -156,7 +173,7 @@ public class ConfigScreen extends Screen {
                             // On envoie instantanément la nouvelle décision au serveur !
                             ClientPlayNetworking.send(new UpdateShareStatusPayload(ModConfig.INSTANCE.sharePosition));
                         })
-                        .bounds(droiteX, Y_CONFIDENTIALITE + 12, LARGEUR_COLONNE_DROITE, 20)
+                        .bounds(droiteX, Y_CONFIDENTIALITE + 12, largeurDroite, 20)
                         .tooltip(Tooltip.create(Component.translatable("gui.xaeroheadtracker.share.tooltip")))
                         .build()
         );
@@ -166,7 +183,7 @@ public class ConfigScreen extends Screen {
                 Button.builder(Component.translatable("gui.xaeroheadtracker.back"), bouton -> {
                             this.minecraft.gui.setScreen(this.ecranPrecedent); // On ferme le menu
                         })
-                        .bounds(droiteX, this.height - MARGE - 20, LARGEUR_COLONNE_DROITE, 20)
+                        .bounds(droiteX, this.height - MARGE - 20, largeurDroite, 20)
                         .build()
         );
 
@@ -261,13 +278,14 @@ public class ConfigScreen extends Screen {
         graphics.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFFFF);
 
         // Titres des colonnes et des sections
-        int droiteX = this.width - MARGE - LARGEUR_COLONNE_DROITE;
         graphics.text(this.font, Component.translatable("gui.xaeroheadtracker.header_players"), MARGE, Y_ENTETES, 0xFFFFFF55);
         graphics.text(this.font, Component.translatable("gui.xaeroheadtracker.header_display"), droiteX, Y_ENTETES, 0xFFFFFF55);
         graphics.text(this.font, Component.translatable("gui.xaeroheadtracker.header_privacy"), droiteX, Y_CONFIDENTIALITE, 0xFFFFFF55);
 
-        // Ligne d'aide sous la recherche
-        graphics.text(this.font, Component.translatable("gui.xaeroheadtracker.help"), MARGE, Y_WIDGETS + 25, 0xFFAAAAAA);
+        // Texte d'aide sous la recherche (sur plusieurs lignes si besoin)
+        for (int i = 0; i < lignesAide.size(); i++) {
+            graphics.text(this.font, lignesAide.get(i), MARGE, aideY + i * 10, 0xFFAAAAAA);
+        }
 
         // Fond de la liste
         graphics.fill(listeX, listeY, listeX + listeLargeur, listeY + listeHauteur, 0x80000000);
