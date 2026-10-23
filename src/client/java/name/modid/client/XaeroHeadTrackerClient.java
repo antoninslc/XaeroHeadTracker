@@ -358,13 +358,21 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 								}
 							}
 
+							boolean avecTete = ModConfig.INSTANCE.showHeads;
+							// Sans tete, le pseudo est centre sur la position du joueur
+							int basBloc = avecTete ? (int) drawY + headSize / 2 : (int) drawY + 5;
+
 							if (ModConfig.INSTANCE.showNames) {
+								int pseudoY = avecTete ? (int) drawY - headSize / 2 - 10 : (int) drawY - 4;
 								MapRenderHelper.drawCenteredStringWithBackground(
 										guiGraphics, client.font, pseudo,
-										(int) drawX, (int) drawY - headSize / 2 - 10,
+										(int) drawX, pseudoY,
 										-1,
 										0.0F, 0.0F, 0.0F, 0.4F
 								);
+							}
+
+							if (ModConfig.INSTANCE.showNames || avecTete) {
 
 								long msEcoulees = tempsActuel - pos.timestamp;
 								long minutesEcoulees = msEcoulees / 60000L;
@@ -383,7 +391,7 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 								guiGraphics.pose().scale(echelle, echelle);
 
 								int cibleX = (int) (drawX / echelle);
-								int cibleY = (int) ((drawY + headSize / 2 + 2) / echelle);
+								int cibleY = (int) ((basBloc + 2) / echelle);
 
 								MapRenderHelper.drawCenteredStringWithBackground(
 										guiGraphics, client.font, texteStatut,
