@@ -16,7 +16,7 @@ loom {
 
 	runs {
 		client {
-			programArgs "--quickPlaySingleplayer", "Test ${project.minecraft_version}"
+			programArgs "--quickPlaySingleplayer", "Test ${project.minecraft_version.replace('.', '_')}"
 		}
 	}
 	splitEnvironmentSourceSets()
@@ -91,7 +91,7 @@ publishing {
 
 // Dev : cree le monde de test "Test <version>" depuis le modele dev/test-world s'il n'existe pas encore
 tasks.register('prepareTestWorld') {
-	def monde = file("run/saves/Test ${project.minecraft_version}")
+	def monde = file("run/saves/Test ${project.minecraft_version.replace('.', '_')}")
 	def modele = file('dev/test-world')
 	onlyIf { !monde.exists() && modele.exists() }
 	doLast {
