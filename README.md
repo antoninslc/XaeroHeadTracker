@@ -2,7 +2,7 @@
 
 Minecraft mod that shows other players' heads on [Xaero's World Map](https://modrinth.com/mod/xaeros-world-map), with their name and a status tag (live, or time since the last position update).
 
-Download: [Modrinth](https://modrinth.com/mod/xaeroheadtracker) | [CurseForge](https://www.curseforge.com/minecraft/mc-mods/xaeroheadtracker)
+Download: [Modrinth](https://modrinth.com/mod/xaero-head-tracker) | [CurseForge](https://www.curseforge.com/projects/1597062)
 
 ## Features
 
@@ -31,7 +31,7 @@ The 1.x versions are archived under the tags `v1/<loader>/<mc>`.
 
 ## Development
 
-Each branch is a standalone Gradle project (`./gradlew build`, `./gradlew runClient`). See `AGENTS.md` on a v2 branch for the dev workflow (test world, simulation commands such as `/xht simulate live`).
+Each branch is a standalone Gradle project (`./gradlew build`, `./gradlew runClient`). In the dev client, `/xht simulate live|disconnect|old|clear` fakes a second player on the map.
 
 ## License
 
