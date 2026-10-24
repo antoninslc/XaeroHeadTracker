@@ -5,11 +5,13 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.multiplayer.PlayerInfo;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.resources.DefaultPlayerSkin;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import name.modid.UpdateShareStatusPayload;
 
 import java.util.ArrayList;
@@ -59,7 +61,7 @@ public class ConfigScreen extends Screen {
         final Component entete;
         final UUID uuid;
         final String pseudo;
-        final ResourceLocation peau;
+        final Identifier peau;
         final boolean enLigne;
 
         Ligne(Component entete) {
@@ -70,7 +72,7 @@ public class ConfigScreen extends Screen {
             this.enLigne = false;
         }
 
-        Ligne(UUID uuid, String pseudo, ResourceLocation peau, boolean enLigne) {
+        Ligne(UUID uuid, String pseudo, Identifier peau, boolean enLigne) {
             this.entete = null;
             this.uuid = uuid;
             this.pseudo = pseudo;
@@ -201,11 +203,11 @@ public class ConfigScreen extends Screen {
         // 1. Joueurs en ligne sur le serveur
         if (this.minecraft != null && this.minecraft.getConnection() != null) {
             for (PlayerInfo info : this.minecraft.getConnection().getOnlinePlayers()) {
-                UUID uuid = info.getProfile().getId();
+                UUID uuid = info.getProfile().id();
                 if (uuid == null || uuid.equals(monUuid)) {
                     continue;
                 }
-                joueurs.put(uuid, new Ligne(uuid, info.getProfile().getName(), info.getSkin().texture(), true));
+                joueurs.put(uuid, new Ligne(uuid, info.getProfile().name(), info.getSkin().body().texturePath(), true));
             }
         }
 
@@ -319,11 +321,11 @@ public class ConfigScreen extends Screen {
         }
 
         // Tete a gauche (visage + calque du chapeau)
-        ResourceLocation peau = l.peau != null ? l.peau : DefaultPlayerSkin.get(l.uuid).texture();
+        Identifier peau = l.peau != null ? l.peau : DefaultPlayerSkin.get(l.uuid).body().texturePath();
         int teteX = listeX + 4;
         int teteY = y + (HAUTEUR_LIGNE - TAILLE_TETE) / 2;
-        graphics.blit(peau, teteX, teteY, TAILLE_TETE, TAILLE_TETE, 8.0F, 8.0F, 8, 8, 64, 64);
-        graphics.blit(peau, teteX, teteY, TAILLE_TETE, TAILLE_TETE, 40.0F, 8.0F, 8, 8, 64, 64);
+        graphics.blit(RenderPipelines.GUI_TEXTURED, peau, teteX, teteY, 8.0F, 8.0F, TAILLE_TETE, TAILLE_TETE, 8, 8, 64, 64);
+        graphics.blit(RenderPipelines.GUI_TEXTURED, peau, teteX, teteY, 40.0F, 8.0F, TAILLE_TETE, TAILLE_TETE, 8, 8, 64, 64);
 
         // Pseudo (gris si hors ligne)
         int couleur = l.enLigne ? 0xFFFFFFFF : 0xFF808080;
@@ -341,8 +343,11 @@ public class ConfigScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(double mx, double my, int button) {
-        if (super.mouseClicked(mx, my, button)) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double mx = event.x();
+        double my = event.y();
+        int button = event.button();
+        if (super.mouseClicked(event, doubleClick)) {
             return true;
         }
         if (mx < listeX || mx >= listeX + listeLargeur || my < listeY || my >= listeY + listeHauteur) {

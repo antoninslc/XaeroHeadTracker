@@ -36,7 +36,7 @@ dependencies {
 	// Le mot-clé "modImplementation" est vital ici :
 	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-	modImplementation "xaero.map:xaeroworldmap-fabric-1.21.1:${project.xaeroworldmap_version}"
+	modImplementation "xaero.map:xaeroworldmap-fabric-1.21.11:${project.xaeroworldmap_version}"
 }
 
 processResources {
@@ -49,7 +49,7 @@ processResources {
 }
 
 tasks.withType(JavaCompile).configureEach {
-	it.options.release = 21
+	it.options.release = 25
 }
 
 java {
@@ -58,8 +58,8 @@ java {
 	// If you remove this line, sources will not be generated.
 	withSourcesJar()
 
-	sourceCompatibility = JavaVersion.VERSION_21
-	targetCompatibility = JavaVersion.VERSION_21
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
 }
 
 jar {

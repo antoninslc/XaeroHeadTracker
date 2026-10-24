@@ -12,13 +12,16 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.client.input.InputWithModifiers;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.multiplayer.PlayerInfo;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 
 import name.modid.PlayerPositionPayload;
 
 // L'IMPORT DE LA CARTE XAERO
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import xaero.map.gui.GuiMap;
 
 import java.util.HashMap;
@@ -57,7 +60,7 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 	// 2. Notre raccourci clavier
 	private static KeyMapping toucheParametres;
 
-	private static final ResourceLocation EYE_TEXTURE = ResourceLocation.fromNamespaceAndPath("xaeroheadtracker", "textures/gui/eye.png");
+	private static final Identifier EYE_TEXTURE = Identifier.fromNamespaceAndPath("xaeroheadtracker", "textures/gui/eye.png");
 
 	/** Retire de la carte les bots crees par /xht simulate many. */
 	private static void supprimerBotsMultiples() {
@@ -102,7 +105,7 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 		toucheParametres = KeyBindingHelper.registerKeyBinding(new KeyMapping(
 				"key.xaeroheadtracker.open_settings", // La clé magique est ici
 				GLFW.GLFW_KEY_H,
-				CATEGORIE_MOD
+				KeyMapping.Category.register(Identifier.fromNamespaceAndPath("xaeroheadtracker", "parametres"))
 		));
 
 		// 2. On écoute en permanence (à chaque "tick" du jeu) si la touche est pressée
@@ -138,12 +141,12 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 								.then(ClientCommandManager.literal("live").executes(ctx -> {
 									var player = ctx.getSource().getPlayer();
 									var client = ctx.getSource().getClient();
-									String dim = player.level().dimension().location().toString();
+									String dim = player.level().dimension().identifier().toString();
 									PositionData botPos = new PositionData(player.getX() + 15.0, player.getY(), player.getZ() + 15.0, BOT_TEST_UUID, dim);
 									if (client.getConnection() != null) {
 										PlayerInfo myInfo = client.getConnection().getPlayerInfo(player.getUUID());
 										if (myInfo != null) {
-											botPos.texturePeau = myInfo.getSkin().texture();
+											botPos.texturePeau = myInfo.getSkin().body().texturePath();
 										}
 									}
 									positionsJoueurs.put(BOT_TEST_NAME, botPos);
@@ -178,7 +181,7 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 										.then(ClientCommandManager.argument("nombre", IntegerArgumentType.integer(1, 100)).executes(ctx -> {
 											int nombre = IntegerArgumentType.getInteger(ctx, "nombre");
 											var player = ctx.getSource().getPlayer();
-											String dim = player.level().dimension().location().toString();
+											String dim = player.level().dimension().identifier().toString();
 											supprimerBotsMultiples();
 											for (int i = 1; i <= nombre; i++) {
 												String nom = "Bot" + i;
@@ -188,7 +191,7 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 												double rayon = 20.0 + (i % 5) * 10.0;
 												PositionData pos = new PositionData(player.getX() + Math.cos(angle) * rayon, player.getY(),
 														player.getZ() + Math.sin(angle) * rayon, uuid, dim);
-												pos.texturePeau = DefaultPlayerSkin.get(uuid).texture();
+												pos.texturePeau = DefaultPlayerSkin.get(uuid).body().texturePath();
 												if (i % 3 == 0) {
 													pos.timestamp = System.currentTimeMillis() - i * 60 * 1000L;
 												} else {
@@ -237,7 +240,7 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 			if (client.getConnection() != null) {
 				PlayerInfo info = client.getConnection().getPlayerInfo(uuid);
 				if (info != null) {
-					pos.texturePeau = info.getSkin().texture();
+					pos.texturePeau = info.getSkin().body().texturePath();
 				}
 			}
 		});
@@ -250,19 +253,21 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 				AbstractButton boutonOeil = new AbstractButton(7, 32, 16, 16, Component.literal("O")) {
 
 					@Override
-					public void onPress() {
+					public void onPress(InputWithModifiers input) {
 						client.setScreen(new ConfigScreen(screen));
 					}
 
 					@Override
-					protected void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+					protected void renderContents(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
 						// Si la souris est dessus, le décalage est de -1 pixel (vers le haut), sinon 0
 						int decalageY = this.isHovered() ? -1 : 0;
 
 						guiGraphics.blit(
+								RenderPipelines.GUI_TEXTURED,
 								EYE_TEXTURE,
 								this.getX(), this.getY() + decalageY,
-								0.0F, 0.0F,
+								0, 0,
+								16, 16,
 								16, 16,
 								16, 16
 						);
@@ -291,7 +296,7 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 							(tempsActuel - entree.getValue().timestamp) > 120 * 60 * 1000L
 					);
 
-					String maDimension = client.level != null ? client.level.dimension().location().toString() : "";
+					String maDimension = client.level != null ? client.level.dimension().identifier().toString() : "";
 
 					for (Map.Entry<String, PositionData> entree : positionsJoueurs.entrySet()) {
 						String pseudo = entree.getKey();
@@ -330,18 +335,20 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 									: null;
 
 							if (info != null) {
-								pos.texturePeau = info.getSkin().texture();
+								pos.texturePeau = info.getSkin().body().texturePath();
 							}
 
-							ResourceLocation skinTextureToUse = pos.texturePeau;
+							Identifier skinTextureToUse = pos.texturePeau;
 
 							if (ModConfig.INSTANCE.showHeads) {
 								if (skinTextureToUse != null) {
 									guiGraphics.blit(
+											RenderPipelines.GUI_TEXTURED,
 											skinTextureToUse,
 											(int) drawX - headSize / 2, (int) drawY - headSize / 2,
 											8.0F, 8.0F,
 											headSize, headSize,
+											8, 8,
 											64, 64
 									);
 								} else {
@@ -377,8 +384,8 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 								}
 
 								float echelle = 0.7F;
-								guiGraphics.pose().pushPose();
-								guiGraphics.pose().scale(echelle, echelle, 1.0F);
+								guiGraphics.pose().pushMatrix();
+								guiGraphics.pose().scale(echelle, echelle);
 
 								int cibleX = (int) (drawX / echelle);
 								int cibleY = (int) ((basBloc + 2) / echelle);
@@ -389,7 +396,7 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 										-1
 								);
 
-								guiGraphics.pose().popPose();
+								guiGraphics.pose().popMatrix();
 							}
 						}
 					}
@@ -402,9 +409,9 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 				});
 
 				// 3. GESTION MANUELLE DES CLICS : On intercepte le clic sur l'œil avant Xaero
-				ScreenMouseEvents.allowMouseClick(screen).register((s, sourisX, sourisY, boutonSouris) -> {
-					if (!GuiMap.hiddenUI && boutonOeil.isMouseOver(sourisX, sourisY)) {
-						boutonOeil.mouseClicked(sourisX, sourisY, boutonSouris);
+				ScreenMouseEvents.allowMouseClick(screen).register((s, event) -> {
+					if (!GuiMap.hiddenUI && boutonOeil.isMouseOver(event.x(), event.y())) {
+						boutonOeil.mouseClicked(event, false);
 						return false; // on absorbe le clic, Xaero ne le reçoit jamais
 					}
 					return true;
@@ -418,7 +425,7 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 		public UUID uuid;
 		public String dimension;
 		public long timestamp;
-		public ResourceLocation texturePeau;
+		public Identifier texturePeau;
 
 		public PositionData(double x, double y, double z, UUID uuid, String dimension) {
 			this.x = x; this.y = y; this.z = z; this.uuid = uuid;
