@@ -164,12 +164,11 @@ public class ConfigScreen extends Screen {
         // Bouton 3 : Partager ma position (OUI/NON)
         this.addRenderableWidget(
                 Button.builder(getTexteBoutonPartage(), bouton -> {
-                            ModConfig.INSTANCE.sharePosition = !ModConfig.INSTANCE.sharePosition;
-                            ModConfig.INSTANCE.sauvegarder();
+                            PlayerVisibilityConfig.INSTANCE.definirPartage(!PlayerVisibilityConfig.INSTANCE.getPartage());
                             bouton.setMessage(getTexteBoutonPartage());
 
                             // On envoie instantanément la nouvelle décision au serveur !
-                            ClientPlayNetworking.send(new UpdateShareStatusPayload(ModConfig.INSTANCE.sharePosition));
+                            ClientPlayNetworking.send(new UpdateShareStatusPayload(PlayerVisibilityConfig.INSTANCE.getPartage()));
                         })
                         .bounds(droiteX, Y_CONFIDENTIALITE + 12, largeurDroite, 20)
                         .tooltip(Tooltip.create(Component.translatable("gui.xaeroheadtracker.share.tooltip")))
@@ -399,7 +398,7 @@ public class ConfigScreen extends Screen {
     }
 
     private Component getTexteBoutonPartage() {
-        Component etat = ModConfig.INSTANCE.sharePosition
+        Component etat = PlayerVisibilityConfig.INSTANCE.getPartage()
                 ? Component.literal("§a").append(Component.translatable("gui.xaeroheadtracker.yes"))
                 : Component.literal("§c").append(Component.translatable("gui.xaeroheadtracker.no"));
         return Component.translatable("gui.xaeroheadtracker.share").append(etat);

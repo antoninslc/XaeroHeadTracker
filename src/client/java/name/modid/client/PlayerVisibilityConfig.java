@@ -40,6 +40,8 @@ public class PlayerVisibilityConfig {
     /** Reglages d'un serveur. */
     public static class ServerSettings {
         public boolean showOthers = false;
+        // null = pas de choix propre a ce serveur, on suit le reglage global de ModConfig
+        public Boolean sharePosition = null;
         // Cle : UUID du joueur sous forme de texte
         public Map<String, SelectedPlayer> selected = new HashMap<>();
     }
@@ -117,6 +119,24 @@ public class PlayerVisibilityConfig {
             p.lastKnownName = pseudo;
             sauvegarder();
         }
+    }
+
+    /** Partage de ma position sur le serveur courant : choix du serveur, sinon reglage global. */
+    public boolean getPartage() {
+        ServerSettings s = reglages(false);
+        return s != null && s.sharePosition != null ? s.sharePosition : ModConfig.INSTANCE.sharePosition;
+    }
+
+    public void definirPartage(boolean valeur) {
+        ServerSettings s = reglages(true);
+        if (s == null) {
+            // Hors serveur (pas de cle), on retombe sur le reglage global
+            ModConfig.INSTANCE.sharePosition = valeur;
+            ModConfig.INSTANCE.sauvegarder();
+            return;
+        }
+        s.sharePosition = valeur;
+        sauvegarder();
     }
 
     public boolean getAfficherAutres() {

@@ -19,6 +19,7 @@ import name.modid.PlayerPositionPayload;
 
 // L'IMPORT DE LA CARTE XAERO
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.storage.LevelResource;
 import xaero.map.gui.GuiMap;
 
 import java.util.HashMap;
@@ -68,10 +69,10 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 		botsMultiplesEnLigne.clear();
 	}
 
-	/** Cle de stockage du serveur courant : adresse en multijoueur, nom du monde en solo. */
+	/** Cle de stockage du serveur courant : adresse en multijoueur, dossier de sauvegarde en solo (le nom affiche n'est pas unique). */
 	private static String identifierServeur(Minecraft client) {
 		if (client.getSingleplayerServer() != null) {
-			return "solo:" + client.getSingleplayerServer().getWorldData().getLevelName();
+			return "solo:" + client.getSingleplayerServer().getWorldPath(LevelResource.ROOT).toAbsolutePath().normalize().getFileName();
 		}
 		if (client.getCurrentServer() != null) {
 			return client.getCurrentServer().ip;
@@ -91,11 +92,10 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 
 		// Dès qu'on rejoint un serveur (ou un monde solo), on annonce notre choix !
 		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
-			// On utilise la valeur qui a été chargée depuis le JSON
-			ClientPlayNetworking.send(new UpdateShareStatusPayload(ModConfig.INSTANCE.sharePosition));
-
-			// On identifie le serveur (ou le monde solo) pour charger les joueurs choisis
+			// On identifie le serveur (ou le monde solo) pour charger les joueurs choisis et le choix de partage
 			PlayerVisibilityConfig.INSTANCE.definirServeurCourant(identifierServeur(client));
+
+			ClientPlayNetworking.send(new UpdateShareStatusPayload(PlayerVisibilityConfig.INSTANCE.getPartage()));
 		});
 
 		// 1. On crée et on enregistre le raccourci (avec KeyBindingHelper !)
