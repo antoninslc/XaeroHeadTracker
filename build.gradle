@@ -1,5 +1,5 @@
 plugins {
-	id 'net.neoforged.moddev' version "${moddev_plugin_version}"
+	id 'net.neoforged.moddev.legacyforge' version "${moddev_plugin_version}"
 	id 'maven-publish'
 }
 
@@ -13,25 +13,22 @@ repositories {
 	}
 }
 
-neoForge {
-	version = project.neoforge_version
+legacyForge {
+	version = project.forge_version
 
 	runs {
 		client {
 			client()
-			systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
 			programArguments.addAll('--username', 'Joueur1')
-			programArguments.addAll('--quickPlaySingleplayer', "Test ${project.minecraft_version}")
+			programArguments.addAll('--quickPlaySingleplayer', "Test ${project.minecraft_version.replace('.', '_')}")
 		}
 		client2 {
 			client()
 			gameDirectory = file('run2')
-			systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
 			programArguments.addAll('--username', 'Joueur2')
 		}
 		server {
 			server()
-			systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
 		}
 	}
 
@@ -50,38 +47,38 @@ tasks.matching { it.name == 'prepareClient2Run' || it.name == 'runClient2' }.con
 }
 
 dependencies {
-	// NeoForge gère automatiquement la dépendance Minecraft
-	implementation "xaero.map:xaeroworldmap-neoforge-${project.minecraft_version}:${project.xaeroworldmap_version}"
+	modImplementation "xaero.map:xaeroworldmap-forge-${project.minecraft_version}:${project.xaeroworldmap_version}"
+	modImplementation "xaero.lib:xaerolib-forge-${project.minecraft_version}:1.7.3"
 }
 
 processResources {
 	def expandProps = [
 			"version": project.mod_version,
 			"minecraft_version": project.minecraft_version,
-			"neoforge_version": project.neoforge_version
+			"forge_version": project.forge_version
 	]
 
 	inputs.properties expandProps
 
-	filesMatching("META-INF/neoforge.mods.toml") {
+	filesMatching("META-INF/mods.toml") {
 		expand expandProps
 	}
 }
 
 tasks.withType(JavaCompile).configureEach {
-	it.options.release = 21
+	it.options.release = 17
 }
 
 java {
 	toolchain {
-		languageVersion = JavaLanguageVersion.of(21)
+		languageVersion = JavaLanguageVersion.of(17)
 	}
 	withSourcesJar()
 }
 
 jar {
 	archiveBaseName.set("XaeroHeadTracker")
-	archiveClassifier.set("neoforge-${project.minecraft_version}")
+	archiveClassifier.set("forge-${project.minecraft_version}")
 	archiveVersion.set(project.version)
 
 	from("LICENSE") {
@@ -101,7 +98,7 @@ publishing {
 
 // Dev : cree le monde de test "Test <version>" depuis le modele dev/test-world s'il n'existe pas encore
 tasks.register('prepareTestWorld') {
-	def monde = file("run/saves/Test ${project.minecraft_version}")
+	def monde = file("run/saves/Test ${project.minecraft_version.replace('.', '_')}")
 	def modele = file('dev/test-world')
 	onlyIf { !monde.exists() && modele.exists() }
 	doLast {

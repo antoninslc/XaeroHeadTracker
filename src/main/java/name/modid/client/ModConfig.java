@@ -2,7 +2,7 @@ package name.modid.client;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import net.neoforged.fml.loading.FMLPaths; // Remplacement de FabricLoader
+import net.minecraftforge.fml.loading.FMLPaths; // Remplacement de FabricLoader
 
 import java.io.Reader;
 import java.io.Writer;
@@ -14,7 +14,7 @@ import name.modid.XaeroHeadTracker;
 public class ModConfig {
     public static final ModConfig INSTANCE = new ModConfig();
 
-    // On utilise FMLPaths pour obtenir le dossier config sous NeoForge
+    // On utilise FMLPaths pour obtenir le dossier config sous Forge
     private static final Path FICHIER = FMLPaths.CONFIGDIR.get().resolve("xaeroheadtracker.json");
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 

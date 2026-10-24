@@ -18,18 +18,16 @@ import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.storage.LevelResource;
-import net.minecraft.client.resources.PlayerSkin;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
-import net.neoforged.fml.loading.FMLEnvironment;
-import net.neoforged.neoforge.client.event.ClientTickEvent;
-import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
-import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
-import net.neoforged.neoforge.client.event.ScreenEvent;
-import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
+import net.minecraftforge.client.event.RegisterClientCommandsEvent;
+import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
+import net.minecraftforge.client.event.ScreenEvent;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
+import net.minecraftforge.fml.loading.FMLEnvironment;
 import org.lwjgl.glfw.GLFW;
 import xaero.map.gui.GuiMap;
 import xaero.map.graphics.MapRenderHelper;
@@ -73,10 +71,9 @@ public class XaeroHeadTrackerClient {
 		return null;
 	}
 
-	private static final ResourceLocation EYE_TEXTURE = ResourceLocation.fromNamespaceAndPath("xaeroheadtracker", "textures/gui/eye.png");
+	private static final ResourceLocation EYE_TEXTURE = new ResourceLocation("xaeroheadtracker", "textures/gui/eye.png");
 
-	// CORRECTION : Retrait du paramètre 'bus', l'API le déduit automatiquement
-	@EventBusSubscriber(modid = XaeroHeadTracker.MOD_ID, value = Dist.CLIENT)
+	@Mod.EventBusSubscriber(modid = XaeroHeadTracker.MOD_ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
 	public static class ClientModEvents {
 
 		@SubscribeEvent
@@ -96,12 +93,14 @@ public class XaeroHeadTrackerClient {
 		}
 	}
 
-	// CORRECTION : Retrait du paramètre 'bus'
-	@EventBusSubscriber(modid = XaeroHeadTracker.MOD_ID, value = Dist.CLIENT)
+	@Mod.EventBusSubscriber(modid = XaeroHeadTracker.MOD_ID, value = Dist.CLIENT)
 	public static class ClientGameEvents {
 
 		@SubscribeEvent
-		public static void onClientTick(ClientTickEvent.Post event) {
+		public static void onClientTick(TickEvent.ClientTickEvent event) {
+			if (event.phase != TickEvent.Phase.END) {
+				return;
+			}
 			Minecraft client = Minecraft.getInstance();
 			if (toucheParametres != null && client.player != null) {
 				while (toucheParametres.consumeClick()) {
@@ -143,7 +142,7 @@ public class XaeroHeadTrackerClient {
 								if (client.getConnection() != null) {
 									PlayerInfo myInfo = client.getConnection().getPlayerInfo(player.getUUID());
 									if (myInfo != null) {
-										botPos.cachedSkin = myInfo.getSkin();
+										botPos.cachedSkin = myInfo.getSkinLocation();
 									}
 								}
 								positionsJoueurs.put(BOT_TEST_NAME, botPos);
@@ -188,7 +187,7 @@ public class XaeroHeadTrackerClient {
 											double rayon = 20.0 + (i % 5) * 10.0;
 											PositionData pos = new PositionData(player.getX() + Math.cos(angle) * rayon, player.getY(),
 													player.getZ() + Math.sin(angle) * rayon, uuid);
-											pos.cachedSkin = DefaultPlayerSkin.get(uuid);
+											pos.cachedSkin = DefaultPlayerSkin.getDefaultSkin(uuid);
 											if (i % 3 == 0) {
 												pos.timestamp = System.currentTimeMillis() - i * 60 * 1000L;
 											} else {
@@ -213,12 +212,9 @@ public class XaeroHeadTrackerClient {
 
 		@SubscribeEvent
 		public static void onPlayerJoin(ClientPlayerNetworkEvent.LoggingIn event) {
-			// CORRECTION : Envoi du paquet via la connexion native du client
 			Minecraft client = Minecraft.getInstance();
 			PlayerVisibilityConfig.INSTANCE.definirServeurCourant(identifierServeur(client));
-			if (client.getConnection() != null) {
-				client.getConnection().send(new UpdateShareStatusPayload(PlayerVisibilityConfig.INSTANCE.getPartage()));
-			}
+			XaeroHeadTracker.CHANNEL.sendToServer(new UpdateShareStatusPayload(PlayerVisibilityConfig.INSTANCE.getPartage()));
 		}
 
 		@SubscribeEvent
@@ -279,15 +275,11 @@ public class XaeroHeadTrackerClient {
 								: null;
 
 						if (info != null) {
-							pos.cachedSkin = info.getSkin();
+							pos.cachedSkin = info.getSkinLocation();
 						}
 
 						if (ModConfig.INSTANCE.showHeads) {
-							ResourceLocation skinTexture = null;
-							if (pos.cachedSkin != null) {
-								skinTexture = pos.cachedSkin.texture();
-							}
-							
+							ResourceLocation skinTexture = pos.cachedSkin;
 							if (skinTexture != null) {
 								guiGraphics.blit(
 										skinTexture,
@@ -385,8 +377,8 @@ public class XaeroHeadTrackerClient {
 		}
 	}
 
-	public static void recevoirPositions(PlayerPositionPayload payload, IPayloadContext context) {
-		context.enqueueWork(() -> {
+	public static void recevoirPositions(PlayerPositionPayload payload) {
+		Minecraft.getInstance().execute(() -> {
 			String pseudo = payload.pseudo();
 			UUID uuid = payload.uuid();
 			double x = payload.x();
@@ -408,7 +400,7 @@ public class XaeroHeadTrackerClient {
 		public double x, y, z;
 		public UUID uuid;
 		public long timestamp;
-		public PlayerSkin cachedSkin;
+		public ResourceLocation cachedSkin;
 
 		public PositionData(double x, double y, double z, UUID uuid) {
 			this.x = x; this.y = y; this.z = z; this.uuid = uuid;

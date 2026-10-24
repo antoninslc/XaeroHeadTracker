@@ -1,24 +1,14 @@
 package name.modid;
 
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.FriendlyByteBuf;
 
-public record UpdateShareStatusPayload(boolean sharePosition) implements CustomPacketPayload {
+public record UpdateShareStatusPayload(boolean sharePosition) {
 
-    // Identifiant unique pour ce paquet
-    public static final CustomPacketPayload.Type<UpdateShareStatusPayload> TYPE = new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath("xaeroheadtracker", "update_share_status"));
+    public static void encode(UpdateShareStatusPayload p, FriendlyByteBuf buf) {
+        buf.writeBoolean(p.sharePosition());
+    }
 
-    // Codec pour traduire le booléen en données réseau
-    public static final StreamCodec<RegistryFriendlyByteBuf, UpdateShareStatusPayload> CODEC = StreamCodec.composite(
-            ByteBufCodecs.BOOL, UpdateShareStatusPayload::sharePosition,
-            UpdateShareStatusPayload::new
-    );
-
-    @Override
-    public Type<? extends CustomPacketPayload> type() {
-        return TYPE;
+    public static UpdateShareStatusPayload decode(FriendlyByteBuf buf) {
+        return new UpdateShareStatusPayload(buf.readBoolean());
     }
 }

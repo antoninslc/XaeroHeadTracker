@@ -1,13 +1,16 @@
 package name.modid;
 
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.fml.common.Mod;
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.tick.ServerTickEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
-import net.neoforged.neoforge.network.registration.PayloadRegistrar;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.DistExecutor;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.network.NetworkRegistry;
+import net.minecraftforge.network.PacketDistributor;
+import net.minecraftforge.network.simple.SimpleChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,46 +23,51 @@ public class XaeroHeadTracker {
 	public static final String MOD_ID = "xaeroheadtracker";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
+	private static final String VERSION_PROTOCOLE = "1";
+	public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
+			new ResourceLocation(MOD_ID, "main"), () -> VERSION_PROTOCOLE, VERSION_PROTOCOLE::equals, VERSION_PROTOCOLE::equals);
+
 	private int compteurTemps = 0;
 	public static final Set<UUID> joueursCaches = new HashSet<>();
 
-	public XaeroHeadTracker(IEventBus modEventBus) {
-		// Enregistrement des événements réseau spécifiques au mod
-		modEventBus.addListener(this::registerNetworking);
+	public XaeroHeadTracker() {
+		registerNetworking();
 
 		// Enregistrement de la boucle (tick) sur le bus global du jeu
-		NeoForge.EVENT_BUS.addListener(this::onServerTick);
+		MinecraftForge.EVENT_BUS.register(this);
 	}
 
-	private void registerNetworking(final RegisterPayloadHandlersEvent event) {
-		final PayloadRegistrar registrar = event.registrar("1");
-
-		// Réception du paquet client -> serveur
-		registrar.playToServer(
-				UpdateShareStatusPayload.TYPE,
-				UpdateShareStatusPayload.CODEC,
-				(payload, context) -> {
-					// On exécute le changement de manière synchronisée
-					context.enqueueWork(() -> {
-						UUID uuidJoueur = context.player().getUUID();
+	private void registerNetworking() {
+		// Reception du paquet client -> serveur
+		CHANNEL.registerMessage(0, UpdateShareStatusPayload.class, UpdateShareStatusPayload::encode, UpdateShareStatusPayload::decode,
+				(payload, ctx) -> {
+					ctx.get().enqueueWork(() -> {
+						ServerPlayer joueur = ctx.get().getSender();
+						if (joueur == null) {
+							return;
+						}
 						if (payload.sharePosition()) {
-							joueursCaches.remove(uuidJoueur);
+							joueursCaches.remove(joueur.getUUID());
 						} else {
-							joueursCaches.add(uuidJoueur);
+							joueursCaches.add(joueur.getUUID());
 						}
 					});
-				}
-		);
+					ctx.get().setPacketHandled(true);
+				});
 
-		// Déclaration du paquet serveur -> client
-		registrar.playToClient(
-				PlayerPositionPayload.TYPE,
-				PlayerPositionPayload.CODEC,
-				name.modid.client.XaeroHeadTrackerClient::recevoirPositions
-		);
+		// Declaration du paquet serveur -> client
+		CHANNEL.registerMessage(1, PlayerPositionPayload.class, PlayerPositionPayload::encode, PlayerPositionPayload::decode,
+				(payload, ctx) -> {
+					DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> name.modid.client.XaeroHeadTrackerClient.recevoirPositions(payload));
+					ctx.get().setPacketHandled(true);
+				});
 	}
 
-	private void onServerTick(ServerTickEvent.Post event) {
+	@SubscribeEvent
+	public void onServerTick(TickEvent.ServerTickEvent event) {
+		if (event.phase != TickEvent.Phase.END) {
+			return;
+		}
 		compteurTemps++;
 		if (compteurTemps >= 20) {
 			compteurTemps = 0;
@@ -69,16 +77,8 @@ public class XaeroHeadTracker {
 					continue;
 				}
 
-				String pseudo = joueur.getName().getString();
-				UUID uuid = joueur.getUUID();
-				double x = joueur.getX();
-				double y = joueur.getY();
-				double z = joueur.getZ();
-
-				PlayerPositionPayload paquet = new PlayerPositionPayload(pseudo, uuid, x, y, z);
-
-				// NeoForge gère l'envoi global plus facilement que Fabric
-				PacketDistributor.sendToAllPlayers(paquet);
+				PlayerPositionPayload paquet = new PlayerPositionPayload(joueur.getName().getString(), joueur.getUUID(), joueur.getX(), joueur.getY(), joueur.getZ());
+				CHANNEL.send(PacketDistributor.ALL.noArg(), paquet);
 			}
 		}
 	}

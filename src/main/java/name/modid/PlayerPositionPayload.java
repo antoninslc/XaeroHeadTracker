@@ -1,29 +1,20 @@
 package name.modid;
 
-import net.minecraft.core.UUIDUtil;
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.FriendlyByteBuf;
 
 import java.util.UUID;
 
-public record PlayerPositionPayload(String pseudo, UUID uuid, double x, double y, double z) implements CustomPacketPayload {
+public record PlayerPositionPayload(String pseudo, UUID uuid, double x, double y, double z) {
 
-    public static final CustomPacketPayload.Type<PlayerPositionPayload> TYPE = new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath("xaeroheadtracker", "player_position"));
+    public static void encode(PlayerPositionPayload p, FriendlyByteBuf buf) {
+        buf.writeUtf(p.pseudo());
+        buf.writeUUID(p.uuid());
+        buf.writeDouble(p.x());
+        buf.writeDouble(p.y());
+        buf.writeDouble(p.z());
+    }
 
-    public static final StreamCodec<RegistryFriendlyByteBuf, PlayerPositionPayload> CODEC = StreamCodec.composite(
-            ByteBufCodecs.STRING_UTF8, PlayerPositionPayload::pseudo,
-            UUIDUtil.STREAM_CODEC, PlayerPositionPayload::uuid,
-            ByteBufCodecs.DOUBLE, PlayerPositionPayload::x,
-            ByteBufCodecs.DOUBLE, PlayerPositionPayload::y,
-            ByteBufCodecs.DOUBLE, PlayerPositionPayload::z,
-            PlayerPositionPayload::new
-    );
-
-    @Override
-    public Type<? extends CustomPacketPayload> type() {
-        return TYPE;
+    public static PlayerPositionPayload decode(FriendlyByteBuf buf) {
+        return new PlayerPositionPayload(buf.readUtf(), buf.readUUID(), buf.readDouble(), buf.readDouble(), buf.readDouble());
     }
 }

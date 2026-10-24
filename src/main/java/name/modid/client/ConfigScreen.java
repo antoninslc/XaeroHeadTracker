@@ -10,6 +10,7 @@ import net.minecraft.client.resources.DefaultPlayerSkin;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import name.modid.UpdateShareStatusPayload;
+import name.modid.XaeroHeadTracker;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -168,7 +169,7 @@ public class ConfigScreen extends Screen {
 
                             // On envoie instantanément la nouvelle décision au serveur !
                             if (this.minecraft != null && this.minecraft.getConnection() != null) {
-                                this.minecraft.getConnection().send(new UpdateShareStatusPayload(PlayerVisibilityConfig.INSTANCE.getPartage()));
+                                XaeroHeadTracker.CHANNEL.sendToServer(new UpdateShareStatusPayload(PlayerVisibilityConfig.INSTANCE.getPartage()));
                             }
                         })
                         .bounds(droiteX, Y_CONFIDENTIALITE + 12, largeurDroite, 20)
@@ -205,7 +206,7 @@ public class ConfigScreen extends Screen {
                 if (uuid == null || uuid.equals(monUuid)) {
                     continue;
                 }
-                joueurs.put(uuid, new Ligne(uuid, info.getProfile().getName(), info.getSkin().texture(), true));
+                joueurs.put(uuid, new Ligne(uuid, info.getProfile().getName(), info.getSkinLocation(), true));
             }
         }
 
@@ -216,7 +217,7 @@ public class ConfigScreen extends Screen {
                 continue;
             }
             boolean enLigne = maintenant - pos.timestamp <= 4000;
-            joueurs.put(pos.uuid, new Ligne(pos.uuid, entree.getKey(), pos.cachedSkin != null ? pos.cachedSkin.texture() : null, enLigne));
+            joueurs.put(pos.uuid, new Ligne(pos.uuid, entree.getKey(), pos.cachedSkin, enLigne));
         }
 
         // 3. Joueurs coches mais absents (hors ligne)
@@ -270,6 +271,7 @@ public class ConfigScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        this.renderBackground(graphics);
         super.render(graphics, mouseX, mouseY, partialTick);
 
         // Titre
@@ -319,7 +321,7 @@ public class ConfigScreen extends Screen {
         }
 
         // Tete a gauche (visage + calque du chapeau)
-        ResourceLocation peau = l.peau != null ? l.peau : DefaultPlayerSkin.get(l.uuid).texture();
+        ResourceLocation peau = l.peau != null ? l.peau : DefaultPlayerSkin.getDefaultSkin(l.uuid);
         int teteX = listeX + 4;
         int teteY = y + (HAUTEUR_LIGNE - TAILLE_TETE) / 2;
         graphics.blit(peau, teteX, teteY, TAILLE_TETE, TAILLE_TETE, 8.0F, 8.0F, 8, 8, 64, 64);
@@ -368,13 +370,13 @@ public class ConfigScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollY) {
         if (mouseX >= listeX && mouseX < listeX + listeLargeur && mouseY >= listeY && mouseY < listeY + listeHauteur) {
             defilement -= scrollY * HAUTEUR_LIGNE;
             limiterDefilement();
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+        return super.mouseScrolled(mouseX, mouseY, scrollY);
     }
 
     private Component getTexteBoutonAutres() {
