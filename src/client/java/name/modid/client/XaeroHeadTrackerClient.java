@@ -22,6 +22,7 @@ import name.modid.PlayerPositionPayload;
 
 // L'IMPORT DE LA CARTE XAERO
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.level.storage.LevelResource;
 import xaero.map.gui.GuiMap;
 
 import java.util.HashMap;
@@ -71,10 +72,10 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 		botsMultiplesEnLigne.clear();
 	}
 
-	/** Cle de stockage du serveur courant : adresse en multijoueur, nom du monde en solo. */
+	/** Cle de stockage du serveur courant : adresse en multijoueur, dossier de sauvegarde en solo (le nom affiche n'est pas unique). */
 	private static String identifierServeur(Minecraft client) {
 		if (client.getSingleplayerServer() != null) {
-			return "solo:" + client.getSingleplayerServer().getWorldData().getLevelName();
+			return "solo:" + client.getSingleplayerServer().getWorldPath(LevelResource.ROOT).toAbsolutePath().normalize().getFileName();
 		}
 		if (client.getCurrentServer() != null) {
 			return client.getCurrentServer().ip;
