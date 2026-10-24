@@ -94,11 +94,10 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 
 		// Dès qu'on rejoint un serveur (ou un monde solo), on annonce notre choix !
 		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
-			// On utilise la valeur qui a été chargée depuis le JSON
-			ClientPlayNetworking.send(new UpdateShareStatusPayload(ModConfig.INSTANCE.sharePosition));
-
-			// On identifie le serveur (ou le monde solo) pour charger les joueurs choisis
+			// On identifie le serveur (ou le monde solo) pour charger les joueurs choisis et le choix de partage
 			PlayerVisibilityConfig.INSTANCE.definirServeurCourant(identifierServeur(client));
+
+			ClientPlayNetworking.send(new UpdateShareStatusPayload(PlayerVisibilityConfig.INSTANCE.getPartage()));
 		});
 
 		// 1. On crée et on enregistre le raccourci (avec KeyBindingHelper !)
