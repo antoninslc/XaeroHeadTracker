@@ -1,5 +1,7 @@
 package name.modid.client;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -11,6 +13,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import name.modid.UpdateShareStatusPayload;
 import name.modid.XaeroHeadTracker;
+import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -274,19 +277,16 @@ public class ConfigScreen extends Screen {
         if (ecranPrecedent != null) {
             // La carte reste visible derriere, comme pour les ecrans de Xaero ; souris hors ecran pour qu'elle ne reagisse pas
             ecranPrecedent.render(graphics, -1, -1, partialTick);
-            // Force l'affichage immediat de ce que la carte a mis en attente (fleche du joueur) avant notre voile
+            // La fleche du joueur ecrit dans le tampon de profondeur : on le vide pour que notre voile passe devant
             graphics.flush();
+            RenderSystem.clear(GL11.GL_DEPTH_BUFFER_BIT, Minecraft.ON_OSX);
         } else {
             this.renderBackground(graphics);
         }
-        // Profondeur au-dessus de la carte (sa fleche de joueur est dessinee plus haut que z = 0)
-        graphics.pose().pushPose();
-        graphics.pose().translate(0.0F, 0.0F, 500.0F);
         if (ecranPrecedent != null) {
             graphics.fill(0, 0, this.width, this.height, 0x90000000);
         }
         dessinerContenu(graphics, mouseX, mouseY, partialTick);
-        graphics.pose().popPose();
     }
 
     private void dessinerContenu(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
