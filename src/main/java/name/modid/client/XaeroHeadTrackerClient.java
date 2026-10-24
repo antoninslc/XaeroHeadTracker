@@ -20,6 +20,7 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModList;
@@ -68,10 +69,10 @@ public class XaeroHeadTrackerClient {
 		botsMultiplesEnLigne.clear();
 	}
 
-	/** Cle de stockage du serveur courant : adresse en multijoueur, nom du monde en solo. */
+	/** Cle de stockage du serveur courant : adresse en multijoueur, dossier de sauvegarde en solo (le nom affiche n'est pas unique). */
 	private static String identifierServeur(Minecraft client) {
 		if (client.getSingleplayerServer() != null) {
-			return "solo:" + client.getSingleplayerServer().getWorldData().getLevelName();
+			return "solo:" + client.getSingleplayerServer().getWorldPath(LevelResource.ROOT).toAbsolutePath().normalize().getFileName();
 		}
 		if (client.getCurrentServer() != null) {
 			return client.getCurrentServer().ip;
@@ -242,7 +243,7 @@ public class XaeroHeadTrackerClient {
 			Minecraft client = Minecraft.getInstance();
 			PlayerVisibilityConfig.INSTANCE.definirServeurCourant(identifierServeur(client));
 			if (client.getConnection() != null) {
-				client.getConnection().send(new UpdateShareStatusPayload(ModConfig.INSTANCE.sharePosition));
+				client.getConnection().send(new UpdateShareStatusPayload(PlayerVisibilityConfig.INSTANCE.getPartage()));
 			}
 		}
 
