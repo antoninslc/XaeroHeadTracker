@@ -271,7 +271,13 @@ public class ConfigScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        this.renderBackground(graphics);
+        if (ecranPrecedent != null) {
+            // La carte reste visible derriere, comme pour les ecrans de Xaero ; souris hors ecran pour qu'elle ne reagisse pas
+            ecranPrecedent.render(graphics, -1, -1, partialTick);
+            graphics.fill(0, 0, this.width, this.height, 0x90000000);
+        } else {
+            this.renderBackground(graphics);
+        }
         super.render(graphics, mouseX, mouseY, partialTick);
 
         // Titre
