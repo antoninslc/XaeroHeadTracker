@@ -1,47 +1,38 @@
 # XaeroHeadTracker
 
-XaeroHeadTracker is a Minecraft mod designed to display custom player head icons and status indicators as an overlay on top of Xaero's World Map interface. It allows players on a server to visualize each other's live positions and status directly on the map screen.
+Minecraft mod that shows other players' heads on [Xaero's World Map](https://modrinth.com/mod/xaeros-world-map), with their name and a status tag (live, or time since the last position update).
+
+Download: [Modrinth](https://modrinth.com/mod/xaeroheadtracker) | [CurseForge](https://www.curseforge.com/minecraft/mc-mods/xaeroheadtracker)
 
 ## Features
 
-- **Player Head Overlay**: Renders player head icons on the full-screen Xaero's World Map.
-- **Status Indicators**: Displays player usernames and last-updated status tags (e.g., Live activity or time elapsed since the last position update).
-- **In-Game Settings**: Features an interactive overlay button (eye icon) on the map interface to configure display options on the fly.
-- **Keybinding Integration**: Includes configurable keybindings to access settings directly.
+- Player heads, names and status (Live / time since last update) on the full-screen world map.
+- Settings screen opened from the eye button on the map (or a keybinding), shown over the map. Choose who is visible and whether you share your own position.
+- Settings are stored per server (singleplayer worlds have their own).
 
-## Dependencies
+The mod must be installed on both the client and the server, since the server relays positions. Xaero's World Map is required on the client.
 
-### Client Side
-- **Minecraft** (Supported version matching your build, e.g., 1.21.x)
-- **Fabric Loader**
-- **Fabric API**
-- **Xaero's World Map**
+## Versions and branches
 
-### Server Side
-- **Fabric Loader**
-- **Fabric API**
+One branch per loader and Minecraft version. Current release: **2.1.x**.
 
-> **Note**: Both client and server must have the mod installed to communicate player positions across the network.
+| Loader | Minecraft | Branch | Version |
+|---|---|---|---|
+| Fabric | 1.21.1 | `v2/fabric/1.21.1` | 2.1.0 |
+| Fabric | 1.21.11 | `v2/fabric/1.21.11` | 2.1.0 |
+| Fabric | 26.2 | `v2/fabric/26.2` | 2.1.0 |
+| Fabric | 26.3 | `v2/fabric/26.3` | 2.1.0 |
+| NeoForge | 1.21.1 | `v2/neoforge/1.21.1` | 2.1.0 |
+| NeoForge | 26.3 | `v2/neoforge/26.3` | 2.1.0 |
+| Forge | 1.20.1 | `v2/forge/1.20.1` | 2.1.1 |
 
-## Installation
+Jars for each release are attached to the [GitHub releases](../../releases), and tags are named `<version>+<loader>-<mc>`.
+The 1.x versions are archived under the tags `v1/<loader>/<mc>`.
 
-### Server Installation
-1. Ensure your server is running the Fabric Loader.
-2. Place `fabric-api.jar` into your server's `mods` folder.
-3. Place `xaeroheadtracker-[version].jar` into the server's `mods` folder.
-4. Restart the server.
+## Development
 
-### Client Installation
-1. Install Fabric Loader for your Minecraft launcher.
-2. Place `fabric-api.jar` into your `.minecraft/mods` directory.
-3. Place `XaerosWorldMap_[version].jar` into your `.minecraft/mods` directory.
-4. Place `xaeroheadtracker-[version].jar` into your `.minecraft/mods` directory.
-5. Launch the game using the Fabric profile.
-
-## Setup & Development
-
-For setting up the development environment, please refer to the [Fabric Documentation page](https://docs.fabricmc.net/develop/getting-started/creating-a-project#setting-up) corresponding to your IDE.
+Each branch is a standalone Gradle project (`./gradlew build`, `./gradlew runClient`). See `AGENTS.md` on a v2 branch for the dev workflow (test world, simulation commands such as `/xht simulate live`).
 
 ## License
 
-This project is available under the MIT license.
+MIT.
