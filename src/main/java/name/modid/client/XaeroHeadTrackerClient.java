@@ -3,7 +3,6 @@ package name.modid.client;
 import name.modid.PlayerPositionPayload;
 import name.modid.UpdateShareStatusPayload;
 import name.modid.XaeroHeadTracker;
-import name.modid.mixin.GuiMapAccessor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.gui.GuiGraphics;
@@ -69,6 +68,23 @@ public class XaeroHeadTrackerClient {
 			return client.getCurrentServer().ip;
 		}
 		return null;
+	}
+
+	private static final Map<String, java.lang.reflect.Field> champsCarte = new HashMap<>();
+
+	/** Lit un champ prive de GuiMap par reflexion (pas de mixin sur Forge 1.20.1 : le champ n'est pas obfusque). */
+	private static double lireChamp(Object ecran, String nom) {
+		try {
+			java.lang.reflect.Field champ = champsCarte.get(nom);
+			if (champ == null) {
+				champ = GuiMap.class.getDeclaredField(nom);
+				champ.setAccessible(true);
+				champsCarte.put(nom, champ);
+			}
+			return champ.getDouble(ecran);
+		} catch (ReflectiveOperationException e) {
+			throw new IllegalStateException("Champ GuiMap introuvable : " + nom, e);
+		}
 	}
 
 	private static final ResourceLocation EYE_TEXTURE = new ResourceLocation("xaeroheadtracker", "textures/gui/eye.png");
@@ -235,13 +251,10 @@ public class XaeroHeadTrackerClient {
 			net.minecraft.client.gui.screens.Screen screen = event.getScreen();
 			if (screen.getClass().getName().contains("GuiMap")) {
 				GuiGraphics guiGraphics = event.getGuiGraphics();
-				GuiMap mapScreen = (GuiMap) screen;
-				GuiMapAccessor accessor = (GuiMapAccessor) mapScreen;
-
-				double cameraX = accessor.getCameraX();
-				double cameraZ = accessor.getCameraZ();
-				double scale = accessor.getScale();
-				double screenScale = accessor.getScreenScale();
+				double cameraX = lireChamp(screen, "cameraX");
+				double cameraZ = lireChamp(screen, "cameraZ");
+				double scale = lireChamp(screen, "scale");
+				double screenScale = lireChamp(screen, "screenScale");
 				long tempsActuel = System.currentTimeMillis();
 
 				positionsJoueurs.entrySet().removeIf(entree ->

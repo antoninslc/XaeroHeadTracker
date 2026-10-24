@@ -9,9 +9,6 @@ displayName="Xaero Head Tracker"
 description="Suivi des têtes de joueurs sur la carte Xaero."
 logoFile="assets/xaeroheadtracker/icon.png"
 
-[[mixins]]
-config="xaeroheadtracker.mixins.json"
-
 [[dependencies.xaeroheadtracker]]
 modId="forge"
 mandatory=true
