@@ -1,5 +1,7 @@
 package name.modid.client;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -11,6 +13,8 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import name.modid.UpdateShareStatusPayload;
+
+import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -268,7 +272,23 @@ public class ConfigScreen extends Screen {
     }
 
     @Override
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        // Avec la carte derriere, on dessine notre propre voile (pas de flou)
+        if (ecranPrecedent == null) {
+            super.renderBackground(graphics, mouseX, mouseY, partialTick);
+        }
+    }
+
+    @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        if (ecranPrecedent != null) {
+            // La carte reste visible derriere, comme pour les ecrans de Xaero ; souris hors ecran pour qu'elle ne reagisse pas
+            ecranPrecedent.render(graphics, -1, -1, partialTick);
+            // La fleche du joueur ecrit dans le tampon de profondeur : on le vide pour que notre voile passe devant
+            graphics.flush();
+            RenderSystem.clear(GL11.GL_DEPTH_BUFFER_BIT, Minecraft.ON_OSX);
+            graphics.fill(0, 0, this.width, this.height, 0x90000000);
+        }
         super.render(graphics, mouseX, mouseY, partialTick);
 
         // Titre
