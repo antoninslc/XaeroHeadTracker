@@ -274,6 +274,8 @@ public class ConfigScreen extends Screen {
         if (ecranPrecedent != null) {
             // La carte reste visible derriere, comme pour les ecrans de Xaero ; souris hors ecran pour qu'elle ne reagisse pas
             ecranPrecedent.render(graphics, -1, -1, partialTick);
+            // Force l'affichage immediat de ce que la carte a mis en attente (fleche du joueur) avant notre voile
+            graphics.flush();
         } else {
             this.renderBackground(graphics);
         }
