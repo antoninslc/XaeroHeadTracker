@@ -272,13 +272,13 @@ public class ConfigScreen extends Screen {
     }
 
     @Override
-    public boolean keyPressed(KeyEvent event) {
+    public boolean keyPressed(int touche, int scancode, int modificateurs) {
         // La touche des reglages les referme aussi, sauf pendant la saisie dans la recherche
-        if (!barreRecherche.isFocused() && XaeroHeadTrackerClient.toucheParametres.matches(event)) {
+        if (!barreRecherche.isFocused() && XaeroHeadTrackerClient.toucheParametres.matches(touche, scancode)) {
             onClose();
             return true;
         }
-        return super.keyPressed(event);
+        return super.keyPressed(touche, scancode, modificateurs);
     }
 
     @Override
