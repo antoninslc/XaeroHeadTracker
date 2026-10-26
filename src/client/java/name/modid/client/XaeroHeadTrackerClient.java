@@ -36,6 +36,7 @@ import net.minecraft.client.gui.components.AbstractButton;
 
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.KeyMapping;
 import org.lwjgl.glfw.GLFW;
 
@@ -275,7 +276,7 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 				};
 
 				// Meme format que les infobulles de Xaero : la touche en vert puis le texte
-				boutonOeil.setTooltip(Tooltip.create(Component.translatable("gui.xaeroheadtracker.open_settings_tooltip", toucheParametres.getTranslatedKeyMessage())));
+				boutonOeil.setTooltip(Tooltip.create(Component.translatable("gui.xaeroheadtracker.open_settings_tooltip", toucheParametres.getTranslatedKeyMessage().copy().withStyle(ChatFormatting.DARK_GREEN))));
 
 				// 2. RENDU FORCÉ À LA TOUTE FIN : On dessine par-dessus la carte de Xaero sans widget plein écran
 				ScreenEvents.afterRender(screen).register((s, guiGraphics, mouseX, mouseY, partialTick) -> {

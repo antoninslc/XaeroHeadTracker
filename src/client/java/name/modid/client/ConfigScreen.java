@@ -272,6 +272,12 @@ public class ConfigScreen extends Screen {
     }
 
     @Override
+    public void onClose() {
+        // Echap revient a la carte au lieu de tout fermer
+        this.minecraft.setScreen(this.ecranPrecedent);
+    }
+
+    @Override
     public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         // Avec la carte derriere, on dessine notre propre voile (pas de flou)
         if (ecranPrecedent == null) {
