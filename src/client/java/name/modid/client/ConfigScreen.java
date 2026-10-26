@@ -5,6 +5,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.renderer.RenderPipelines;
@@ -267,6 +268,22 @@ public class ConfigScreen extends Screen {
     private void limiterDefilement() {
         double max = Math.max(0, hauteurTotale() - listeHauteur);
         defilement = Math.max(0, Math.min(defilement, max));
+    }
+
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        // La touche des reglages les referme aussi, sauf pendant la saisie dans la recherche
+        if (!barreRecherche.isFocused() && XaeroHeadTrackerClient.toucheParametres.matches(event)) {
+            onClose();
+            return true;
+        }
+        return super.keyPressed(event);
+    }
+
+    @Override
+    public void onClose() {
+        // Echap revient a la carte au lieu de tout fermer
+        this.minecraft.gui.setScreen(this.ecranPrecedent);
     }
 
     @Override

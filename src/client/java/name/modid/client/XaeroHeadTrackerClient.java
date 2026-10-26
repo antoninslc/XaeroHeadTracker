@@ -10,6 +10,8 @@ import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.Screen;
@@ -63,7 +65,7 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 	private static final KeyMapping.Category CATEGORIE_MOD = KeyMapping.Category.register(Identifier.fromNamespaceAndPath("xaeroheadtracker", "parametres"));
 
 	// 2. Notre raccourci clavier
-	private static KeyMapping toucheParametres;
+	static KeyMapping toucheParametres;
 
 	private static final Identifier EYE_TEXTURE = Identifier.fromNamespaceAndPath("xaeroheadtracker", "textures/gui/eye.png");
 
@@ -266,13 +268,17 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 						// Si la souris est dessus, le décalage est de -1 pixel (vers le haut), sinon 0
 						int decalageY = this.isHovered() ? -1 : 0;
 
+						// Meme teinte au survol que les boutons de Xaero
+						int teinte = this.isHovered() ? 0xFFE6E6E6 : 0xFFFCFCFC;
+
 						guiGraphics.blit(
 								RenderPipelines.GUI_TEXTURED,
 								EYE_TEXTURE,
 								this.getX(), this.getY() + decalageY,
 								0.0F, 0.0F,
 								16, 16,
-								16, 16
+								16, 16,
+								teinte
 						);
 					}
 
@@ -280,138 +286,27 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 					protected void updateWidgetNarration(NarrationElementOutput narrationElementOutput) {}
 				};
 
-				boutonOeil.setTooltip(Tooltip.create(Component.translatable("key.xaeroheadtracker.open_settings")));
+				boutonOeil.setTooltip(Tooltip.create(Component.translatable("gui.xaeroheadtracker.open_settings_tooltip", toucheParametres.getTranslatedKeyMessage().copy().withStyle(ChatFormatting.DARK_GREEN))));
 
 				// 2. RENDU FORCÉ À LA TOUTE FIN : On dessine par-dessus la carte de Xaero sans widget plein écran
 				ScreenEvents.afterExtract(screen).register((s, guiGraphics, mouseX, mouseY, partialTick) -> {
-					GuiMap mapScreen = (GuiMap) screen;
-					GuiMapAccessor accessor = (GuiMapAccessor) mapScreen;
-
-					double cameraX = accessor.getCameraX();
-					double cameraZ = accessor.getCameraZ();
-					double scale = accessor.getScale();
-					double screenScale = accessor.getScreenScale();
-					long tempsActuel = System.currentTimeMillis();
-
-					// Le grand nettoyage : on supprime tous ceux dont le timestamp est plus vieux que 120 minutes
-					// (120 min * 60 sec * 1000 millisecondes)
-					positionsJoueurs.entrySet().removeIf(entree ->
-							(tempsActuel - entree.getValue().timestamp) > 120 * 60 * 1000L
-					);
-
-					String maDimension = client.level != null ? client.level.dimension().identifier().toString() : "";
-
-					for (Map.Entry<String, PositionData> entree : positionsJoueurs.entrySet()) {
-						String pseudo = entree.getKey();
-						PositionData pos = entree.getValue();
-						UUID uuidJoueur = pos.uuid;
-
-						// On ignore le joueur s'il n'est pas dans NOTRE dimension
-						if (!pos.dimension.equals(maDimension)) {
-							continue;
-						}
-
-						// Si la Minimap est installée et que le joueur est dans notre portée locale, la Minimap le gère
-						if (isMinimapInstalled && client.level != null && client.level.getPlayerByUUID(uuidJoueur) != null) {
-							continue;
-						}
-
-						// On ignore le joueur si c'est nous-même
-						if (client.player != null && uuidJoueur.equals(client.player.getUUID())) {
-							continue;
-						}
-
-						// Filtre des joueurs choisis : on ignore les joueurs masques
-						if (!PlayerVisibilityConfig.INSTANCE.estVisible(uuidJoueur)) {
-							continue;
-						}
-						PlayerVisibilityConfig.INSTANCE.mettreAJourPseudo(uuidJoueur, pseudo);
-
-						double drawX = screen.width / 2.0 + (pos.x - cameraX) * scale / screenScale;
-						double drawY = screen.height / 2.0 + (pos.z - cameraZ) * scale / screenScale;
-
-						if (drawX > 0 && drawX < screen.width && drawY > 0 && drawY < screen.height) {
-							int headSize = 8; // taille d'affichage à l'écran, en pixels GUI
-
-							PlayerInfo info = client.getConnection() != null
-									? client.getConnection().getPlayerInfo(uuidJoueur)
-									: null;
-
-							if (info != null) {
-								pos.texturePeau = info.getSkin().body().texturePath();
-							}
-
-							Identifier skinTextureToUse = pos.texturePeau;
-
-							if (ModConfig.INSTANCE.showHeads) {
-								if (skinTextureToUse != null) {
-									guiGraphics.blit(
-											RenderPipelines.GUI_TEXTURED,
-											skinTextureToUse,
-											(int) drawX - headSize / 2, (int) drawY - headSize / 2,
-											8.0F, 8.0F,
-											headSize, headSize,
-											64, 64
-									);
-								} else {
-									guiGraphics.fill((int) drawX - 3, (int) drawY - 3, (int) drawX + 3, (int) drawY + 3, 0xFFFF0000);
-								}
-							}
-
-							boolean avecTete = ModConfig.INSTANCE.showHeads;
-							// Sans tete, le pseudo est centre sur la position du joueur
-							int basBloc = avecTete ? (int) drawY + headSize / 2 : (int) drawY + 5;
-
-							if (ModConfig.INSTANCE.showNames) {
-								int pseudoY = avecTete ? (int) drawY - headSize / 2 - 10 : (int) drawY - 4;
-								MapRenderHelper.drawCenteredStringWithBackground(
-										guiGraphics, client.font, pseudo,
-										(int) drawX, pseudoY,
-										-1,
-										0.0F, 0.0F, 0.0F, 0.4F
-								);
-							}
-
-							if (ModConfig.INSTANCE.showNames || avecTete) {
-
-								long msEcoulees = tempsActuel - pos.timestamp;
-								long minutesEcoulees = msEcoulees / 60000L;
-
-								String texteStatut;
-								if (msEcoulees <= 4000) {
-									texteStatut = "§aLive";
-								} else if (minutesEcoulees < 1) {
-									texteStatut = "§7< 1 min";
-								} else {
-									texteStatut = "§7" + minutesEcoulees + " min";
-								}
-
-								float echelle = 0.7F;
-								guiGraphics.pose().pushMatrix();
-								guiGraphics.pose().scale(echelle, echelle);
-
-								int cibleX = (int) (drawX / echelle);
-								int cibleY = (int) ((basBloc + 2) / echelle);
-
-								MapRenderHelper.drawCenteredStringWithBackground(
-										guiGraphics, client.font, texteStatut,
-										cibleX, cibleY,
-										-1,
-										0.0F, 0.0F, 0.0F, 0.4F
-								);
-
-								guiGraphics.pose().popMatrix();
-							}
-						}
+					if (!GuiMap.hiddenUI) {
+						boutonOeil.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
 					}
+				});
 
-					// Rendu manuel du bouton par-dessus tout le reste (inclut son tooltip officiel)
-					boutonOeil.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
+				// La touche du raccourci ouvre aussi les reglages depuis la carte (les touches ne sont pas lues en tick quand un ecran est ouvert)
+				ScreenKeyboardEvents.allowKeyPress(screen).register((s, event) -> {
+					if (toucheParametres.matches(event)) {
+						client.gui.setScreen(new ConfigScreen(screen));
+						return false;
+					}
+					return true;
 				});
 
 				// 3. GESTION MANUELLE DES CLICS : On intercepte le clic sur l'œil avant Xaero
 				ScreenMouseEvents.allowMouseClick(screen).register((Screen s, MouseButtonEvent context) -> {
-					if (boutonOeil.isMouseOver(context.x(), context.y())) {
+					if (!GuiMap.hiddenUI && boutonOeil.isMouseOver(context.x(), context.y())) {
 						boutonOeil.mouseClicked(context, false);
 						return false; // on absorbe le clic, Xaero ne le reçoit jamais
 					}
@@ -419,6 +314,129 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 				});
 			}
 		});
+	}
+
+	/** Dessine les tetes sur la carte ; appele par GuiMapMixin avant les boutons de Xaero pour que ses cadres passent par-dessus. */
+	public static void dessinerTetes(Minecraft client, GuiMap mapScreen, GuiGraphicsExtractor guiGraphics) {
+		GuiMapAccessor accessor = (GuiMapAccessor) mapScreen;
+
+		double cameraX = accessor.getCameraX();
+		double cameraZ = accessor.getCameraZ();
+		double scale = accessor.getScale();
+		double screenScale = accessor.getScreenScale();
+		long tempsActuel = System.currentTimeMillis();
+
+		// Le grand nettoyage : on supprime tous ceux dont le timestamp est plus vieux que 120 minutes
+		// (120 min * 60 sec * 1000 millisecondes)
+		positionsJoueurs.entrySet().removeIf(entree ->
+				(tempsActuel - entree.getValue().timestamp) > 120 * 60 * 1000L
+		);
+
+		String maDimension = client.level != null ? client.level.dimension().identifier().toString() : "";
+
+		for (Map.Entry<String, PositionData> entree : positionsJoueurs.entrySet()) {
+			String pseudo = entree.getKey();
+			PositionData pos = entree.getValue();
+			UUID uuidJoueur = pos.uuid;
+
+			// On ignore le joueur s'il n'est pas dans NOTRE dimension
+			if (!pos.dimension.equals(maDimension)) {
+				continue;
+			}
+
+			// Si la Minimap est installée et que le joueur est dans notre portée locale, la Minimap le gère
+			if (isMinimapInstalled && client.level != null && client.level.getPlayerByUUID(uuidJoueur) != null) {
+				continue;
+			}
+
+			// On ignore le joueur si c'est nous-même
+			if (client.player != null && uuidJoueur.equals(client.player.getUUID())) {
+				continue;
+			}
+
+			// Filtre des joueurs choisis : on ignore les joueurs masques
+			if (!PlayerVisibilityConfig.INSTANCE.estVisible(uuidJoueur)) {
+				continue;
+			}
+			PlayerVisibilityConfig.INSTANCE.mettreAJourPseudo(uuidJoueur, pseudo);
+
+			double drawX = mapScreen.width / 2.0 + (pos.x - cameraX) * scale / screenScale;
+			double drawY = mapScreen.height / 2.0 + (pos.z - cameraZ) * scale / screenScale;
+
+			if (drawX > 0 && drawX < mapScreen.width && drawY > 0 && drawY < mapScreen.height) {
+				int headSize = 8; // taille d'affichage à l'écran, en pixels GUI
+
+				PlayerInfo info = client.getConnection() != null
+						? client.getConnection().getPlayerInfo(uuidJoueur)
+						: null;
+
+				if (info != null) {
+					pos.texturePeau = info.getSkin().body().texturePath();
+				}
+
+				Identifier skinTextureToUse = pos.texturePeau;
+
+				if (ModConfig.INSTANCE.showHeads) {
+					if (skinTextureToUse != null) {
+						guiGraphics.blit(
+								RenderPipelines.GUI_TEXTURED,
+								skinTextureToUse,
+								(int) drawX - headSize / 2, (int) drawY - headSize / 2,
+								8.0F, 8.0F,
+								headSize, headSize,
+								64, 64
+						);
+					} else {
+						guiGraphics.fill((int) drawX - 3, (int) drawY - 3, (int) drawX + 3, (int) drawY + 3, 0xFFFF0000);
+					}
+				}
+
+				boolean avecTete = ModConfig.INSTANCE.showHeads;
+				// Sans tete, le pseudo est centre sur la position du joueur
+				int basBloc = avecTete ? (int) drawY + headSize / 2 : (int) drawY + 5;
+
+				if (ModConfig.INSTANCE.showNames) {
+					int pseudoY = avecTete ? (int) drawY - headSize / 2 - 10 : (int) drawY - 4;
+					MapRenderHelper.drawCenteredStringWithBackground(
+							guiGraphics, client.font, pseudo,
+							(int) drawX, pseudoY,
+							-1,
+							0.0F, 0.0F, 0.0F, 0.4F
+					);
+				}
+
+				if (ModConfig.INSTANCE.showNames || avecTete) {
+
+					long msEcoulees = tempsActuel - pos.timestamp;
+					long minutesEcoulees = msEcoulees / 60000L;
+
+					String texteStatut;
+					if (msEcoulees <= 4000) {
+						texteStatut = "§aLive";
+					} else if (minutesEcoulees < 1) {
+						texteStatut = "§7< 1 min";
+					} else {
+						texteStatut = "§7" + minutesEcoulees + " min";
+					}
+
+					float echelle = 0.7F;
+					guiGraphics.pose().pushMatrix();
+					guiGraphics.pose().scale(echelle, echelle);
+
+					int cibleX = (int) (drawX / echelle);
+					int cibleY = (int) ((basBloc + 2) / echelle);
+
+					MapRenderHelper.drawCenteredStringWithBackground(
+							guiGraphics, client.font, texteStatut,
+							cibleX, cibleY,
+							-1,
+							0.0F, 0.0F, 0.0F, 0.4F
+					);
+
+					guiGraphics.pose().popMatrix();
+				}
+			}
+		}
 	}
 
 	public static class PositionData {
