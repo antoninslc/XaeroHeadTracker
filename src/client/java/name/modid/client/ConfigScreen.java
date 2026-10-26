@@ -270,7 +270,20 @@ public class ConfigScreen extends Screen {
     }
 
     @Override
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        // Avec la carte derriere, on dessine notre propre voile (pas de flou)
+        if (ecranPrecedent == null) {
+            super.renderBackground(graphics, mouseX, mouseY, partialTick);
+        }
+    }
+
+    @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        if (ecranPrecedent != null) {
+            // La carte reste visible derriere, comme pour les ecrans de Xaero ; souris hors ecran pour qu'elle ne reagisse pas
+            ecranPrecedent.render(graphics, -1, -1, partialTick);
+            graphics.fill(0, 0, this.width, this.height, 0x90000000);
+        }
         super.render(graphics, mouseX, mouseY, partialTick);
 
         // Titre
