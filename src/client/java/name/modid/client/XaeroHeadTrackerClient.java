@@ -401,6 +401,8 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 					if (!GuiMap.hiddenUI) {
 						// Rendu manuel du bouton par-dessus tout le reste (inclut son tooltip officiel)
 						boutonOeil.render(guiGraphics, mouseX, mouseY, partialTick);
+						// Cet evenement passe apres le rendu des infobulles de l'ecran : on affiche la notre tout de suite
+						guiGraphics.renderDeferredElements();
 					}
 				});
 
