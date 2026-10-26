@@ -22,5 +22,5 @@
   "gui.xaeroheadtracker.section_others_shown": "Non cochés : affichés aussi (%s)",
   "gui.xaeroheadtracker.no_players": "Aucun joueur trouvé",
   "key.xaeroheadtracker.open_settings": "Paramètres Head Tracker",
-  "gui.xaeroheadtracker.open_settings_tooltip": "§2%s§r Paramètres Head Tracker"
+  "gui.xaeroheadtracker.open_settings_tooltip": "%s Paramètres Head Tracker"
 }
