@@ -21,5 +21,6 @@
   "gui.xaeroheadtracker.section_others_hidden": "Unchecked: hidden (%s)",
   "gui.xaeroheadtracker.section_others_shown": "Unchecked: also shown (%s)",
   "gui.xaeroheadtracker.no_players": "No player found",
-  "key.xaeroheadtracker.open_settings": "Head Tracker Settings"
+  "key.xaeroheadtracker.open_settings": "Head Tracker Settings",
+  "gui.xaeroheadtracker.open_settings_tooltip": "%s Head Tracker Settings"
 }

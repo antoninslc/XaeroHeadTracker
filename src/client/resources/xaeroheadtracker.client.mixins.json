@@ -3,7 +3,8 @@
 	"package": "name.modid.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"client": [
-		"GuiMapAccessor"
+		"GuiMapAccessor",
+		"GuiMapMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
