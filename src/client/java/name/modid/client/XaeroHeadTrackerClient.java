@@ -6,6 +6,7 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
@@ -259,8 +260,9 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 
 					@Override
 					protected void renderContents(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-						// Si la souris est dessus, le décalage est de -1 pixel (vers le haut), sinon 0
+						// Comme les boutons de Xaero : au survol, -1 pixel vers le haut et teinte plus sombre
 						int decalageY = this.isHovered() ? -1 : 0;
+						int teinte = this.isHovered() ? 0xFFE6E6E6 : 0xFFFCFCFC;
 
 						guiGraphics.blit(
 								RenderPipelines.GUI_TEXTURED,
@@ -269,7 +271,7 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 								0, 0,
 								16, 16,
 								16, 16,
-								16, 16
+								teinte
 						);
 					}
 
@@ -277,7 +279,8 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 					protected void updateWidgetNarration(NarrationElementOutput narrationElementOutput) {}
 				};
 
-				boutonOeil.setTooltip(Tooltip.create(Component.translatable("key.xaeroheadtracker.open_settings")));
+				// Meme format que les infobulles de Xaero : la touche en vert puis le texte
+				boutonOeil.setTooltip(Tooltip.create(Component.translatable("gui.xaeroheadtracker.open_settings_tooltip", toucheParametres.getTranslatedKeyMessage())));
 
 				// 2. RENDU FORCÉ À LA TOUTE FIN : On dessine par-dessus la carte de Xaero sans widget plein écran
 				ScreenEvents.afterRender(screen).register((s, guiGraphics, mouseX, mouseY, partialTick) -> {
@@ -406,6 +409,15 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 						// Rendu manuel du bouton par-dessus tout le reste (inclut son tooltip officiel)
 						boutonOeil.render(guiGraphics, mouseX, mouseY, partialTick);
 					}
+				});
+
+				// La touche du raccourci ouvre aussi les reglages depuis la carte (les touches ne sont pas lues en tick quand un ecran est ouvert)
+				ScreenKeyboardEvents.allowKeyPress(screen).register((s, event) -> {
+					if (toucheParametres.matches(event)) {
+						client.setScreen(new ConfigScreen(screen));
+						return false;
+					}
+					return true;
 				});
 
 				// 3. GESTION MANUELLE DES CLICS : On intercepte le clic sur l'œil avant Xaero
