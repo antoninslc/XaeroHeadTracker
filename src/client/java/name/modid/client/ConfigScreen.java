@@ -272,6 +272,16 @@ public class ConfigScreen extends Screen {
     }
 
     @Override
+    public boolean keyPressed(KeyEvent event) {
+        // La touche des reglages les referme aussi, sauf pendant la saisie dans la recherche
+        if (!barreRecherche.isFocused() && XaeroHeadTrackerClient.toucheParametres.matches(event)) {
+            onClose();
+            return true;
+        }
+        return super.keyPressed(event);
+    }
+
+    @Override
     public void onClose() {
         // Echap revient a la carte au lieu de tout fermer
         this.minecraft.setScreen(this.ecranPrecedent);

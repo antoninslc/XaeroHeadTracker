@@ -58,7 +58,7 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 	// 1. On déclare officiellement notre propre catégorie dans les paramètres du jeu
 	public static final String CATEGORIE_MOD = "key.category.xaeroheadtracker.parametres";
 	// 2. Notre raccourci clavier
-	private static KeyMapping toucheParametres;
+	static KeyMapping toucheParametres;
 
 	private static final ResourceLocation EYE_TEXTURE = ResourceLocation.fromNamespaceAndPath("xaeroheadtracker", "textures/gui/eye.png");
 
