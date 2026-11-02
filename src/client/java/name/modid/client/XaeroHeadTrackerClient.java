@@ -292,6 +292,8 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 				ScreenEvents.afterExtract(screen).register((s, guiGraphics, mouseX, mouseY, partialTick) -> {
 					if (!GuiMap.hiddenUI) {
 						boutonOeil.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
+						// Cet evenement passe apres le rendu des infobulles de l'ecran : on affiche la notre tout de suite
+						guiGraphics.extractDeferredElements(mouseX, mouseY, partialTick);
 					}
 				});
 
