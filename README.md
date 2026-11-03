@@ -18,10 +18,10 @@ One branch per loader and Minecraft version. Current release: **2.1.x**.
 
 | Loader | Minecraft | Branch | Version |
 |---|---|---|---|
-| Fabric | 1.21.1 | `v2/fabric/1.21.1` | 2.1.0 |
+| Fabric | 1.21.1 | `v2/fabric/1.21.1` | 2.1.1 |
 | Fabric | 1.21.11 | `v2/fabric/1.21.11` | 2.1.0 |
 | Fabric | 26.2 | `v2/fabric/26.2` | 2.1.0 |
-| Fabric | 26.3 | `v2/fabric/26.3` | 2.1.0 |
+| Fabric | 26.3 | `v2/fabric/26.3` | 2.1.2 |
 | NeoForge | 1.21.1 | `v2/neoforge/1.21.1` | 2.1.0 |
 | NeoForge | 26.3 | `v2/neoforge/26.3` | 2.1.0 |
 | Forge | 1.20.1 | `v2/forge/1.20.1` | 2.1.1 |
