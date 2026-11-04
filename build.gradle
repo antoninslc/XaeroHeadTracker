@@ -11,6 +11,11 @@ repositories {
 		url "https://chocolateminecraft.com/maven"
 		name "Xaero's Maven"
 	}
+	maven {
+		url "https://api.modrinth.com/maven"
+		name "Modrinth"
+		content { includeGroup "maven.modrinth" }
+	}
 }
 loom {
 
@@ -37,6 +42,9 @@ dependencies {
 	implementation "xaero.map:xaeroworldmap-fabric-26.2:1.41.3"
 	// World Map 1.41.3 embarque xaerolib 1.4.3 : la derniere (1.8.3) a retire des methodes et plante au lancement
 	implementation("xaero.lib:xaerolib-fabric-26.2") { version { strictly "1.4.3" } }
+
+	// Faux joueurs pour tester le multijoueur avec un seul client (/player Bob spawn), hors du jar publié
+	localRuntime "maven.modrinth:carpet:26.2"
 }
 
 processResources {
