@@ -44,6 +44,10 @@ public class PlayerVisibilityConfig {
         public Boolean sharePosition = null;
         // Cle : UUID du joueur sous forme de texte
         public Map<String, SelectedPlayer> selected = new HashMap<>();
+        // null = fichier d'avant cette option (voir charger) ; un nouveau serveur part sur les joueurs choisis
+        public Boolean shareWithEveryone = null;
+        // Joueurs autorises a voir ma position, independants des joueurs coches : les voir ne doit pas me reveler a eux
+        public Map<String, SelectedPlayer> shareWith = new HashMap<>();
     }
 
     // Vrai tant que le message de migration n'a pas ete affiche (existant avant la mise a jour : fichier absent)
@@ -76,6 +80,7 @@ public class PlayerVisibilityConfig {
         ServerSettings s = servers.get(serveurCourant);
         if (s == null && creer) {
             s = new ServerSettings();
+            s.shareWithEveryone = false;
             servers.put(serveurCourant, s);
         }
         return s;
@@ -139,6 +144,44 @@ public class PlayerVisibilityConfig {
         sauvegarder();
     }
 
+    public boolean getPartageTous() {
+        ServerSettings s = reglages(false);
+        return s != null && Boolean.TRUE.equals(s.shareWithEveryone);
+    }
+
+    public void definirPartageTous(boolean valeur) {
+        ServerSettings s = reglages(true);
+        if (s == null) {
+            return;
+        }
+        s.shareWithEveryone = valeur;
+        sauvegarder();
+    }
+
+    public boolean estPartageAvec(UUID uuid) {
+        ServerSettings s = reglages(false);
+        return s != null && s.shareWith.containsKey(uuid.toString());
+    }
+
+    public void definirPartageAvec(UUID uuid, String pseudo, boolean partage) {
+        ServerSettings s = reglages(true);
+        if (s == null) {
+            return;
+        }
+        if (partage) {
+            s.shareWith.put(uuid.toString(), new SelectedPlayer(pseudo));
+        } else {
+            s.shareWith.remove(uuid.toString());
+        }
+        sauvegarder();
+    }
+
+    /** UUID des joueurs autorises a voir ma position sur le serveur courant. */
+    public List<UUID> getJoueursPartage() {
+        ServerSettings s = reglages(false);
+        return s == null ? new ArrayList<>() : enUuids(s.shareWith);
+    }
+
     public boolean getAfficherAutres() {
         ServerSettings s = reglages(false);
         return s != null && s.showOthers;
@@ -155,15 +198,17 @@ public class PlayerVisibilityConfig {
 
     /** Liste des UUID coches du serveur courant (pour afficher les joueurs hors ligne dans l'ecran). */
     public List<UUID> getJoueursCoches() {
-        List<UUID> resultat = new ArrayList<>();
         ServerSettings s = reglages(false);
-        if (s != null) {
-            for (String cle : s.selected.keySet()) {
-                try {
-                    resultat.add(UUID.fromString(cle));
-                } catch (IllegalArgumentException ignore) {
-                    // Entree invalide dans le fichier, ignoree
-                }
+        return s == null ? new ArrayList<>() : enUuids(s.selected);
+    }
+
+    private static List<UUID> enUuids(Map<String, SelectedPlayer> joueurs) {
+        List<UUID> resultat = new ArrayList<>();
+        for (String cle : joueurs.keySet()) {
+            try {
+                resultat.add(UUID.fromString(cle));
+            } catch (IllegalArgumentException ignore) {
+                // Entree invalide dans le fichier, ignoree
             }
         }
         return resultat;
@@ -175,6 +220,9 @@ public class PlayerVisibilityConfig {
             return null;
         }
         SelectedPlayer p = s.selected.get(uuid.toString());
+        if (p == null) {
+            p = s.shareWith.get(uuid.toString());
+        }
         return p == null ? null : p.lastKnownName;
     }
 
@@ -191,6 +239,15 @@ public class PlayerVisibilityConfig {
                     if (donnees != null) {
                         this.migrationNoticeShown = donnees.migrationNoticeShown;
                         this.servers = donnees.servers != null ? donnees.servers : new HashMap<>();
+                        for (ServerSettings s : this.servers.values()) {
+                            if (s.shareWith == null) {
+                                s.shareWith = new HashMap<>();
+                            }
+                            // Avant cette option, "Oui" voulait dire tout le monde : on respecte ce choix explicite
+                            if (s.shareWithEveryone == null) {
+                                s.shareWithEveryone = Boolean.TRUE.equals(s.sharePosition);
+                            }
+                        }
                     }
                 }
             } else {

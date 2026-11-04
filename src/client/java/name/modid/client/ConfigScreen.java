@@ -12,7 +12,6 @@ import net.minecraft.client.resources.DefaultPlayerSkin;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import name.modid.UpdateShareStatusPayload;
 
 import org.lwjgl.opengl.GL11;
 
@@ -133,7 +132,9 @@ public class ConfigScreen extends Screen {
         // Ligne d'aide sous la recherche, puis la liste
         this.listeX = MARGE;
         this.aideY = boutonAutresY + 25;
-        this.lignesAide = this.font.split(Component.translatable("gui.xaeroheadtracker.help"), principaleLargeur);
+        this.lignesAide = this.font.split(Component.translatable(PlayerVisibilityConfig.INSTANCE.getPartageTous()
+                ? "gui.xaeroheadtracker.help"
+                : "gui.xaeroheadtracker.help_share"), principaleLargeur);
         this.listeY = aideY + lignesAide.size() * 10 + 3;
         this.listeLargeur = principaleLargeur;
         this.listeHauteur = this.height - this.listeY - MARGE;
@@ -172,10 +173,22 @@ public class ConfigScreen extends Screen {
                             bouton.setMessage(getTexteBoutonPartage());
 
                             // On envoie instantanément la nouvelle décision au serveur !
-                            ClientPlayNetworking.send(new UpdateShareStatusPayload(PlayerVisibilityConfig.INSTANCE.getPartage()));
+                            XaeroHeadTrackerClient.envoyerPartage();
                         })
                         .bounds(droiteX, Y_CONFIDENTIALITE + 12, largeurDroite, 20)
                         .tooltip(Tooltip.create(Component.translatable("gui.xaeroheadtracker.share.tooltip")))
+                        .build()
+        );
+
+        // Bouton 4 : avec qui. Il reste actif quand le partage est coupé, pour quitter "Tout le monde" sans rien diffuser
+        this.addRenderableWidget(
+                Button.builder(getTexteBoutonAudience(), bouton -> {
+                            PlayerVisibilityConfig.INSTANCE.definirPartageTous(!PlayerVisibilityConfig.INSTANCE.getPartageTous());
+                            XaeroHeadTrackerClient.envoyerPartage();
+                            this.rebuildWidgets(); // Le texte d'aide et les cases de la liste dependent de ce reglage
+                        })
+                        .bounds(droiteX, Y_CONFIDENTIALITE + 36, largeurDroite, 20)
+                        .tooltip(Tooltip.create(Component.translatable("gui.xaeroheadtracker.share_with.tooltip")))
                         .build()
         );
 
@@ -224,6 +237,15 @@ public class ConfigScreen extends Screen {
 
         // 3. Joueurs coches mais absents (hors ligne)
         for (UUID uuid : PlayerVisibilityConfig.INSTANCE.getJoueursCoches()) {
+            if (joueurs.containsKey(uuid)) {
+                continue;
+            }
+            String pseudo = PlayerVisibilityConfig.INSTANCE.getPseudoConnu(uuid);
+            joueurs.put(uuid, new Ligne(uuid, pseudo != null ? pseudo : uuid.toString(), null, false));
+        }
+
+        // 4. Joueurs autorises a me voir mais absents : il faut pouvoir les retirer de la liste
+        for (UUID uuid : PlayerVisibilityConfig.INSTANCE.getJoueursPartage()) {
             if (joueurs.containsKey(uuid)) {
                 continue;
             }
@@ -365,14 +387,33 @@ public class ConfigScreen extends Screen {
         graphics.drawString(this.font, l.pseudo, teteX + TAILLE_TETE + 6, y + (HAUTEUR_LIGNE - 8) / 2, couleur);
 
         // Case a cocher a droite
-        boolean coche = PlayerVisibilityConfig.INSTANCE.estCoche(l.uuid);
         int caseX = listeX + listeLargeur - TAILLE_CASE - 6;
         int caseY = y + (HAUTEUR_LIGNE - TAILLE_CASE) / 2;
-        graphics.fill(caseX, caseY, caseX + TAILLE_CASE, caseY + TAILLE_CASE, 0xFFA0A0A0);
-        graphics.fill(caseX + 1, caseY + 1, caseX + TAILLE_CASE - 1, caseY + TAILLE_CASE - 1, 0xFF202020);
-        if (coche) {
-            graphics.fill(caseX + 3, caseY + 3, caseX + TAILLE_CASE - 3, caseY + TAILLE_CASE - 3, 0xFF55FF55);
+        dessinerCase(graphics, caseX, caseY, PlayerVisibilityConfig.INSTANCE.estCoche(l.uuid), 0xFF55FF55,
+                survol, mouseX, mouseY, "gui.xaeroheadtracker.show_box.tooltip");
+
+        // Case de partage a sa gauche, seulement quand on partage avec des joueurs choisis
+        if (!PlayerVisibilityConfig.INSTANCE.getPartageTous()) {
+            dessinerCase(graphics, casePartageX(), caseY, PlayerVisibilityConfig.INSTANCE.estPartageAvec(l.uuid), 0xFF55AAFF,
+                    survol, mouseX, mouseY, "gui.xaeroheadtracker.share_box.tooltip");
         }
+    }
+
+    private void dessinerCase(GuiGraphics graphics, int x, int y, boolean cochee, int couleur,
+                              boolean ligneSurvolee, int mouseX, int mouseY, String infobulle) {
+        boolean survol = ligneSurvolee && mouseX >= x && mouseX < x + TAILLE_CASE && mouseY >= y && mouseY < y + TAILLE_CASE;
+        graphics.fill(x, y, x + TAILLE_CASE, y + TAILLE_CASE, survol ? 0xFFFFFFFF : 0xFFA0A0A0);
+        graphics.fill(x + 1, y + 1, x + TAILLE_CASE - 1, y + TAILLE_CASE - 1, 0xFF202020);
+        if (cochee) {
+            graphics.fill(x + 3, y + 3, x + TAILLE_CASE - 3, y + TAILLE_CASE - 3, couleur);
+        }
+        if (survol) {
+            graphics.setTooltipForNextFrame(this.font, Component.translatable(infobulle), mouseX, mouseY);
+        }
+    }
+
+    private int casePartageX() {
+        return listeX + listeLargeur - TAILLE_CASE * 2 - 14;
     }
 
     @Override
@@ -390,6 +431,13 @@ public class ConfigScreen extends Screen {
             int h = l.hauteur();
             if (my >= y && my < y + h) {
                 if (l.uuid != null) {
+                    // Clic sur la case de partage : le reste de la ligne continue de cocher l'affichage
+                    if (!PlayerVisibilityConfig.INSTANCE.getPartageTous()
+                            && mx >= casePartageX() - 3 && mx < casePartageX() + TAILLE_CASE + 3) {
+                        PlayerVisibilityConfig.INSTANCE.definirPartageAvec(l.uuid, l.pseudo, !PlayerVisibilityConfig.INSTANCE.estPartageAvec(l.uuid));
+                        XaeroHeadTrackerClient.envoyerAudience();
+                        return true;
+                    }
                     boolean coche = PlayerVisibilityConfig.INSTANCE.estCoche(l.uuid);
                     PlayerVisibilityConfig.INSTANCE.definirCoche(l.uuid, l.pseudo, !coche);
                     reconstruireLignes();
@@ -431,6 +479,13 @@ public class ConfigScreen extends Screen {
                 ? Component.literal("§a").append(Component.translatable("gui.xaeroheadtracker.yes"))
                 : Component.literal("§c").append(Component.translatable("gui.xaeroheadtracker.no"));
         return Component.translatable("gui.xaeroheadtracker.names").append(etat);
+    }
+
+    private Component getTexteBoutonAudience() {
+        Component etat = PlayerVisibilityConfig.INSTANCE.getPartageTous()
+                ? Component.literal("§e").append(Component.translatable("gui.xaeroheadtracker.share_with.everyone"))
+                : Component.literal("§a").append(Component.translatable("gui.xaeroheadtracker.share_with.selected"));
+        return Component.translatable("gui.xaeroheadtracker.share_with").append(etat);
     }
 
     private Component getTexteBoutonPartage() {
