@@ -11,6 +11,11 @@ repositories {
 		url "https://chocolateminecraft.com/maven"
 		name "Xaero's Maven"
 	}
+	maven {
+		url "https://api.modrinth.com/maven"
+		name "Modrinth"
+		content { includeGroup "maven.modrinth" }
+	}
 }
 loom {
 	splitEnvironmentSourceSets()
@@ -24,7 +29,7 @@ loom {
 
 	runs {
 		client {
-			programArgs "--quickPlaySingleplayer", "New World (6)"
+			programArgs "--quickPlaySingleplayer", "Test ${project.minecraft_version.replace('.', '_')}"
 		}
 	}
 }
@@ -35,6 +40,9 @@ dependencies {
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 
 	implementation "xaero.map:xaeroworldmap-fabric-26.3:1.47.0"
+
+	// Faux joueurs pour tester le multijoueur avec un seul client (/player Bob spawn), hors du jar publié
+	localRuntime "maven.modrinth:carpet:26.3"
 }
 
 processResources {
