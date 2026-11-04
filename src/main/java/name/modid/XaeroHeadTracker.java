@@ -4,16 +4,20 @@ import com.mojang.brigadier.arguments.BoolArgumentType;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.gamerule.v1.GameRuleBuilder;
+import net.fabricmc.fabric.api.gamerule.v1.GameRuleEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.gamerules.GameRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,6 +34,10 @@ public class XaeroHeadTracker implements ModInitializer {
 	// UUID des joueurs qui ont demandé à partager : sans le mod ou juste après la connexion, un joueur n'y figure pas
 	public static final Set<UUID> joueursPartageant = new HashSet<>();
 
+	// Permet à l'admin de couper tout le partage du serveur ; le choix de chaque joueur reste en mémoire
+	public static final GameRule<Boolean> PARTAGE_AUTORISE = GameRuleBuilder.forBoolean(true)
+			.buildAndRegister(Identifier.fromNamespaceAndPath(MOD_ID, "allow_sharing"));
+
 	@Override
 	public void onInitialize() {
 		// 1. Déclarations S2C et C2S
@@ -43,11 +51,26 @@ public class XaeroHeadTracker implements ModInitializer {
 // 2. Ensuite SEULEMENT, on attache le récepteur côté serveur pour écouter le paquet C2S
 		ServerPlayNetworking.registerGlobalReceiver(UpdateShareStatusPayload.TYPE, (payload, context) -> {
 			definirPartage(context.player(), payload.isSharing());
+
+			// Le client annonce son choix à chaque connexion : il a pu être absent au moment de la coupure
+			if (!context.player().level().getServer().getGameRules().get(PARTAGE_AUTORISE)
+					&& ServerPlayNetworking.canSend(context.player(), PlayerStopSharePayload.TYPE)) {
+				ServerPlayNetworking.send(context.player(), new PlayerStopSharePayload(PlayerStopSharePayload.TOUS, true));
+			}
 		});
 
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
 			if (joueursPartageant.remove(handler.getPlayer().getUUID())) {
 				diffuser(server, new PlayerStopSharePayload(handler.getPlayer().getName().getString(), false));
+			}
+		});
+
+		GameRuleEvents.changeCallback(PARTAGE_AUTORISE).register((autorise, server) -> {
+			if (!autorise) {
+				diffuser(server, new PlayerStopSharePayload(PlayerStopSharePayload.TOUS, true));
+			}
+			if (FabricLoader.getInstance().isDevelopmentEnvironment()) {
+				LOGGER.info("[XHT Dev] Partage autorise sur le serveur : {}", autorise);
 			}
 		});
 
@@ -69,6 +92,10 @@ public class XaeroHeadTracker implements ModInitializer {
 			compteurTemps++;
 			if (compteurTemps >= 20) {
 				compteurTemps = 0;
+
+				if (!server.getGameRules().get(PARTAGE_AUTORISE)) {
+					return;
+				}
 
 				for (ServerPlayer joueur : server.getPlayerList().getPlayers()) {
 					if (!joueursPartageant.contains(joueur.getUUID())) {
@@ -104,6 +131,9 @@ public class XaeroHeadTracker implements ModInitializer {
 	private static void definirPartage(ServerPlayer joueur, boolean actif) {
 		if (actif) {
 			joueursPartageant.add(joueur.getUUID());
+			if (!joueur.level().getServer().getGameRules().get(PARTAGE_AUTORISE)) {
+				joueur.sendSystemMessage(Component.translatable("message.xaeroheadtracker.sharing_disabled"));
+			}
 		} else if (joueursPartageant.remove(joueur.getUUID())) {
 			diffuser(joueur.level().getServer(), new PlayerStopSharePayload(joueur.getName().getString(), true));
 		}
