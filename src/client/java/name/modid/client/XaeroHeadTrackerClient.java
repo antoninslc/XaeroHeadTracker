@@ -17,6 +17,8 @@ import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.network.chat.Component;
 
 import name.modid.PlayerPositionPayload;
+import name.modid.PlayerStopSharePayload;
+import name.modid.XaeroHeadTracker;
 
 // L'IMPORT DE LA CARTE XAERO
 import net.minecraft.resources.ResourceLocation;
@@ -240,6 +242,18 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 				PlayerInfo info = client.getConnection().getPlayerInfo(uuid);
 				if (info != null) {
 					pos.texturePeau = info.getSkin().texture();
+				}
+			}
+		});
+
+		ClientPlayNetworking.registerGlobalReceiver(PlayerStopSharePayload.TYPE, (payload, context) -> {
+			if (payload.retirer()) {
+				positionsJoueurs.remove(payload.pseudo());
+			} else {
+				PositionData pos = positionsJoueurs.get(payload.pseudo());
+				if (pos != null) {
+					// Au-dela du seuil Live de 4 s : le statut passe tout de suite a "< 1 min"
+					pos.timestamp = System.currentTimeMillis() - 5000L;
 				}
 			}
 		});

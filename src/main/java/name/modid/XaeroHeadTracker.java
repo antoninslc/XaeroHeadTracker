@@ -1,10 +1,18 @@
 package name.modid;
 
+import com.mojang.brigadier.arguments.BoolArgumentType;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.commands.Commands;
+import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,13 +27,14 @@ public class XaeroHeadTracker implements ModInitializer {
 
 	private int compteurTemps = 0;
 
-	// La "Blacklist" des UUID des joueurs qui refusent de partager leur position
-	public static final Set<UUID> joueursCaches = new HashSet<>();
+	// UUID des joueurs qui ont demandé à partager : sans le mod ou juste après la connexion, un joueur n'y figure pas
+	public static final Set<UUID> joueursPartageant = new HashSet<>();
 
 	@Override
 	public void onInitialize() {
 		// 1. Déclarations S2C et C2S
 		PayloadTypeRegistry.playS2C().register(PlayerPositionPayload.TYPE, PlayerPositionPayload.CODEC);
+		PayloadTypeRegistry.playS2C().register(PlayerStopSharePayload.TYPE, PlayerStopSharePayload.CODEC);
 
 // Le client envoie son statut de partage au serveur (C2S = Client To Server)
 		PayloadTypeRegistry.playC2S().register(UpdateShareStatusPayload.TYPE, UpdateShareStatusPayload.CODEC);
@@ -33,13 +42,27 @@ public class XaeroHeadTracker implements ModInitializer {
 
 // 2. Ensuite SEULEMENT, on attache le récepteur côté serveur pour écouter le paquet C2S
 		ServerPlayNetworking.registerGlobalReceiver(UpdateShareStatusPayload.TYPE, (payload, context) -> {
-			UUID uuidJoueur = context.player().getUUID();
-			if (payload.isSharing()) {
-				joueursCaches.remove(uuidJoueur); // Il veut partager, on le retire de la blacklist
-			} else {
-				joueursCaches.add(uuidJoueur); // Il se cache, on l'ajoute
+			definirPartage(context.player(), payload.isSharing());
+		});
+
+		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+			if (joueursPartageant.remove(handler.getPlayer().getUUID())) {
+				diffuser(server, new PlayerStopSharePayload(handler.getPlayer().getName().getString(), false));
 			}
 		});
+
+		// Dev uniquement : un faux joueur Carpet n'a pas de client pour envoyer son choix de partage
+		if (FabricLoader.getInstance().isDevelopmentEnvironment()) {
+			CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
+					dispatcher.register(Commands.literal("xhtdev")
+							.then(Commands.literal("partage")
+									.then(Commands.argument("joueur", EntityArgument.player())
+											.then(Commands.argument("actif", BoolArgumentType.bool())
+													.executes(ctx -> {
+														definirPartage(EntityArgument.getPlayer(ctx, "joueur"), BoolArgumentType.getBool(ctx, "actif"));
+														return 1;
+													}))))));
+		}
 
 		// 3. Boucle de diffusion
 		ServerTickEvents.END_SERVER_TICK.register(server -> {
@@ -48,8 +71,7 @@ public class XaeroHeadTracker implements ModInitializer {
 				compteurTemps = 0;
 
 				for (ServerPlayer joueur : server.getPlayerList().getPlayers()) {
-					// L'ASTUCE EST ICI : Si le joueur est dans la liste des cachés, on saute son tour !
-					if (joueursCaches.contains(joueur.getUUID())) {
+					if (!joueursPartageant.contains(joueur.getUUID())) {
 						continue;
 					}
 
@@ -65,11 +87,28 @@ public class XaeroHeadTracker implements ModInitializer {
 					// CORRECTION 2 : On passe bien la variable dimensionJoueur à la toute fin !
 					PlayerPositionPayload paquet = new PlayerPositionPayload(pseudo, uuid, x, y, z, dimensionJoueur);
 
-					for (ServerPlayer destinataire : server.getPlayerList().getPlayers()) {
-						ServerPlayNetworking.send(destinataire, paquet);
-					}
+					diffuser(server, paquet);
 				}
 			}
 		});
+	}
+
+	private static void diffuser(MinecraftServer server, CustomPacketPayload paquet) {
+		for (ServerPlayer destinataire : server.getPlayerList().getPlayers()) {
+			if (ServerPlayNetworking.canSend(destinataire, paquet.type())) {
+				ServerPlayNetworking.send(destinataire, paquet);
+			}
+		}
+	}
+
+	private static void definirPartage(ServerPlayer joueur, boolean actif) {
+		if (actif) {
+			joueursPartageant.add(joueur.getUUID());
+		} else if (joueursPartageant.remove(joueur.getUUID())) {
+			diffuser(joueur.level().getServer(), new PlayerStopSharePayload(joueur.getName().getString(), true));
+		}
+		if (FabricLoader.getInstance().isDevelopmentEnvironment()) {
+			LOGGER.info("[XHT Dev] Partage de {} : {}", joueur.getName().getString(), actif);
+		}
 	}
 }
