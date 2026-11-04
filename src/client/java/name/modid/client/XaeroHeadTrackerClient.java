@@ -54,6 +54,7 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 
 	public static final Map<String, PositionData> positionsJoueurs = new HashMap<>();
 	public static boolean isMinimapInstalled = false;
+	private static String dernierServeur = null;
 
 	private static final String BOT_TEST_NAME = "BotTest";
 	private static final UUID BOT_TEST_UUID = UUID.fromString("00000000-0000-0000-0000-000000000001");
@@ -103,7 +104,14 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 		// Dès qu'on rejoint un serveur (ou un monde solo), on annonce notre choix !
 		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
 			// On identifie le serveur (ou le monde solo) pour charger les joueurs choisis et le choix de partage
-			PlayerVisibilityConfig.INSTANCE.definirServeurCourant(identifierServeur(client));
+			String serveur = identifierServeur(client);
+			PlayerVisibilityConfig.INSTANCE.definirServeurCourant(serveur);
+
+			// Les têtes d'un autre serveur n'ont rien à faire sur cette carte ; reconnecté au même, on garde les déconnectés
+			if (!serveur.equals(dernierServeur)) {
+				positionsJoueurs.clear();
+				dernierServeur = serveur;
+			}
 
 			ClientPlayNetworking.send(new UpdateShareStatusPayload(PlayerVisibilityConfig.INSTANCE.getPartage()));
 		});
@@ -253,7 +261,9 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 		});
 
 		ClientPlayNetworking.registerGlobalReceiver(PlayerStopSharePayload.TYPE, (payload, context) -> {
-			if (payload.retirer()) {
+			if (payload.pseudo().equals(PlayerStopSharePayload.TOUS)) {
+				positionsJoueurs.clear();
+			} else if (payload.retirer()) {
 				positionsJoueurs.remove(payload.pseudo());
 			} else {
 				PositionData pos = positionsJoueurs.get(payload.pseudo());
