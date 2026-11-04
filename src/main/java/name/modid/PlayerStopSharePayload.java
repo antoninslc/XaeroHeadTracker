@@ -9,6 +9,9 @@ import net.minecraft.resources.Identifier;
 // Un joueur ne diffuse plus sa position : partage coupé (retirer = true) ou déconnexion (retirer = false)
 public record PlayerStopSharePayload(String pseudo, boolean retirer) implements CustomPacketPayload {
 
+    // Pseudo vide, impossible pour un vrai joueur : concerne toutes les têtes, y compris celles des joueurs déconnectés
+    public static final String TOUS = "";
+
     public static final CustomPacketPayload.Type<PlayerStopSharePayload> TYPE = new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath("xaeroheadtracker", "player_stop_share"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, PlayerStopSharePayload> CODEC = StreamCodec.composite(
