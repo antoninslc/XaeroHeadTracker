@@ -48,6 +48,7 @@ import net.minecraft.client.KeyMapping;
 import com.mojang.blaze3d.platform.InputConstants;
 
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import name.modid.UpdateShareAudiencePayload;
 import name.modid.UpdateShareStatusPayload;
 
 public class XaeroHeadTrackerClient implements ClientModInitializer {
@@ -91,6 +92,23 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 		return null;
 	}
 
+	/** Envoie qui peut me voir ; a envoyer avant le partage, pour que le serveur ne diffuse jamais avec une liste perimee. */
+	static boolean envoyerAudience() {
+		if (!ClientPlayNetworking.canSend(UpdateShareAudiencePayload.TYPE)) {
+			return false;
+		}
+		ClientPlayNetworking.send(new UpdateShareAudiencePayload(PlayerVisibilityConfig.INSTANCE.getPartageTous(), PlayerVisibilityConfig.INSTANCE.getJoueursPartage()));
+		return true;
+	}
+
+	static void envoyerPartage() {
+		boolean audienceEnvoyee = envoyerAudience();
+		// Un serveur sans la selection diffuserait a tout le monde : avec une liste, on ne partage pas du tout
+		boolean partage = PlayerVisibilityConfig.INSTANCE.getPartage()
+				&& (audienceEnvoyee || PlayerVisibilityConfig.INSTANCE.getPartageTous());
+		ClientPlayNetworking.send(new UpdateShareStatusPayload(partage));
+	}
+
 	@Override
 	public void onInitializeClient() {
 
@@ -113,7 +131,7 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 				dernierServeur = serveur;
 			}
 
-			ClientPlayNetworking.send(new UpdateShareStatusPayload(PlayerVisibilityConfig.INSTANCE.getPartage()));
+			envoyerPartage();
 		});
 
 		// 1. On crée et on enregistre le raccourci (avec KeyMappingHelper !)
