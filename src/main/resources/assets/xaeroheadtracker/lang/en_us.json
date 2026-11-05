@@ -7,6 +7,13 @@
   "gui.xaeroheadtracker.names.tooltip": "Shows the name and status (Live, minutes since disconnection) of each player on the map.",
   "gui.xaeroheadtracker.share": "Share my position: ",
   "gui.xaeroheadtracker.share.tooltip": "Lets other players who have the mod see your position on their map.",
+  "gui.xaeroheadtracker.share_with": "With: ",
+  "gui.xaeroheadtracker.share_with.everyone": "Everyone",
+  "gui.xaeroheadtracker.share_with.selected": "Selected players",
+  "gui.xaeroheadtracker.share_with.tooltip": "Choose who can see your position when sharing is on. With Selected players, only players with the blue box see you.",
+  "gui.xaeroheadtracker.help_share": "Green box: you see this player on the map. Blue box: they see your position.",
+  "gui.xaeroheadtracker.show_box.tooltip": "Show this player on my map",
+  "gui.xaeroheadtracker.share_box.tooltip": "Allow this player to see my position",
   "gui.xaeroheadtracker.back": "Back",
   "gui.xaeroheadtracker.yes": "Yes",
   "gui.xaeroheadtracker.no": "No",
@@ -21,5 +28,8 @@
   "gui.xaeroheadtracker.section_others_hidden": "Unchecked: hidden (%s)",
   "gui.xaeroheadtracker.section_others_shown": "Unchecked: also shown (%s)",
   "gui.xaeroheadtracker.no_players": "No player found",
-  "key.xaeroheadtracker.open_settings": "Head Tracker Settings"
+  "key.xaeroheadtracker.open_settings": "Head Tracker Settings",
+  "gui.xaeroheadtracker.open_settings_tooltip": "%s Head Tracker Settings",
+  "gamerule.xaeroheadtracker.allow_sharing": "Allow Head Tracker position sharing",
+  "message.xaeroheadtracker.sharing_disabled": "Head Tracker: position sharing is disabled on this server, your position is not sent."
 }
