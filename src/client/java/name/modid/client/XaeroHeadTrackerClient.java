@@ -331,11 +331,9 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 
 				// 2. RENDU FORCÉ À LA TOUTE FIN : On dessine par-dessus la carte de Xaero sans widget plein écran
 				ScreenEvents.afterExtract(screen).register((s, guiGraphics, mouseX, mouseY, partialTick) -> {
-					if (!GuiMap.hiddenUI) {
-						boutonOeil.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
-						// Cet evenement passe apres le rendu des infobulles de l'ecran : on affiche la notre tout de suite
-						guiGraphics.extractDeferredElements(mouseX, mouseY, partialTick);
-					}
+					boutonOeil.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
+					// Cet evenement passe apres le rendu des infobulles de l'ecran : on affiche la notre tout de suite
+					guiGraphics.extractDeferredElements(mouseX, mouseY, partialTick);
 				});
 
 				// La touche du raccourci ouvre aussi les reglages depuis la carte (les touches ne sont pas lues en tick quand un ecran est ouvert)
@@ -349,7 +347,7 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 
 				// 3. GESTION MANUELLE DES CLICS : On intercepte le clic sur l'œil avant Xaero
 				ScreenMouseEvents.allowMouseClick(screen).register((Screen s, MouseButtonEvent context) -> {
-					if (!GuiMap.hiddenUI && boutonOeil.isMouseOver(context.x(), context.y())) {
+					if (boutonOeil.isMouseOver(context.x(), context.y())) {
 						boutonOeil.mouseClicked(context, false);
 						return false; // on absorbe le clic, Xaero ne le reçoit jamais
 					}
