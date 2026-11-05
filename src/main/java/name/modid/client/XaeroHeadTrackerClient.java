@@ -384,7 +384,9 @@ public class XaeroHeadTrackerClient {
 				(tempsActuel - entree.getValue().timestamp) > 120 * 60 * 1000L
 		);
 
-		String maDimension = client.level != null ? client.level.dimension().identifier().toString() : "";
+		// Dimension affichee par la carte, pas celle du joueur : le bouton de Xaero permet d'en voir une autre
+		var dimensionCarte = mapScreen.getMapProcessor().getMapWorld().getCurrentDimensionId();
+		String maDimension = dimensionCarte != null ? dimensionCarte.identifier().toString() : "";
 
 		for (Map.Entry<String, PositionData> entree : positionsJoueurs.entrySet()) {
 			String pseudo = entree.getKey();
