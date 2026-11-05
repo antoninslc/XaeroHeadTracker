@@ -334,6 +334,8 @@ public class XaeroHeadTrackerClient {
 			// F1 : l'oeil disparait comme les boutons de Xaero
 			if (boutonOeilActif != null && !GuiMap.hiddenUI) {
 				boutonOeilActif.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
+				// Cet evenement passe apres le rendu des infobulles de l'ecran : on affiche la notre tout de suite
+				guiGraphics.extractDeferredElements(mouseX, mouseY, partialTick);
 			}
 		}
 
