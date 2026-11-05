@@ -18,13 +18,13 @@ One branch per loader and Minecraft version. Current release: **2.1.x**.
 
 | Loader | Minecraft | Branch | Version |
 |---|---|---|---|
-| Fabric | 1.21.1 | `v2/fabric/1.21.1` | 2.1.1 |
-| Fabric | 1.21.11 | `v2/fabric/1.21.11` | 2.1.0 |
-| Fabric | 26.2 | `v2/fabric/26.2` | 2.1.0 |
-| Fabric | 26.3 | `v2/fabric/26.3` | 2.1.2 |
-| NeoForge | 1.21.1 | `v2/neoforge/1.21.1` | 2.1.0 |
-| NeoForge | 26.3 | `v2/neoforge/26.3` | 2.1.0 |
-| Forge | 1.20.1 | `v2/forge/1.20.1` | 2.1.1 |
+| Fabric | 1.21.1 | `v2/fabric/1.21.1` | 2.2.0 (beta) |
+| Fabric | 1.21.11 | `v2/fabric/1.21.11` | 2.2.0 (beta) |
+| Fabric | 26.2 | `v2/fabric/26.2` | 2.2.0 (beta) |
+| Fabric | 26.3 | `v2/fabric/26.3` | 2.2.0 (beta) |
+| NeoForge | 1.21.1 | `v2/neoforge/1.21.1` | 2.2.0 (beta) |
+| NeoForge | 26.3 | `v2/neoforge/26.3` | 2.2.0 (beta) |
+| Forge | 1.20.1 | `v2/forge/1.20.1` | 2.2.0 (beta) |
 
 Jars for each release are attached to the [GitHub releases](../../releases), and tags are named `<version>+<loader>-<mc>`.
 The 1.x versions are archived under the tags `v1/<loader>/<mc>`.
