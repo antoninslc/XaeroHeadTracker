@@ -51,7 +51,8 @@ public class XaeroHeadTracker {
 	}
 
 	private void registerNetworking(final RegisterPayloadHandlersEvent event) {
-		final PayloadRegistrar registrar = event.registrar("1");
+		// 2 depuis la 2.2.0 : le paquet de position contient la dimension, une version 1 ne saurait pas le lire
+		final PayloadRegistrar registrar = event.registrar("2");
 
 		// Réception du paquet client -> serveur
 		registrar.playToServer(
@@ -76,14 +77,12 @@ public class XaeroHeadTracker {
 				name.modid.client.XaeroHeadTrackerClient::recevoirPositions
 		);
 
-		// Optionnels : un client ou un serveur en version précédente peut toujours se connecter
-		final PayloadRegistrar optionnel = registrar.optional();
-		optionnel.playToClient(
+		registrar.playToClient(
 				PlayerStopSharePayload.TYPE,
 				PlayerStopSharePayload.CODEC,
 				name.modid.client.XaeroHeadTrackerClient::recevoirArretPartage
 		);
-		optionnel.playToServer(
+		registrar.playToServer(
 				UpdateShareAudiencePayload.TYPE,
 				UpdateShareAudiencePayload.CODEC,
 				(payload, context) -> context.enqueueWork(() ->
