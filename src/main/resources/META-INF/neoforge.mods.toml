@@ -4,7 +4,7 @@ license="MIT"
 
 [[mods]]
 modId="xaeroheadtracker"
-version="1.0.0"
+version="${version}"
 displayName="Xaero Head Tracker"
 description="Suivi des têtes de joueurs sur la carte Xaero."
 
