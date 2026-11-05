@@ -169,7 +169,7 @@ public class XaeroHeadTrackerClient {
 								Minecraft client = Minecraft.getInstance();
 								var player = client.player;
 								if (player == null) return 0;
-								PositionData botPos = new PositionData(player.getX() + 15.0, player.getY(), player.getZ() + 15.0, BOT_TEST_UUID);
+								PositionData botPos = new PositionData(player.getX() + 15.0, player.getY(), player.getZ() + 15.0, BOT_TEST_UUID, player.level().dimension().location().toString());
 								if (client.getConnection() != null) {
 									PlayerInfo myInfo = client.getConnection().getPlayerInfo(player.getUUID());
 									if (myInfo != null) {
@@ -217,7 +217,7 @@ public class XaeroHeadTrackerClient {
 											double angle = 2 * Math.PI * i / nombre;
 											double rayon = 20.0 + (i % 5) * 10.0;
 											PositionData pos = new PositionData(player.getX() + Math.cos(angle) * rayon, player.getY(),
-													player.getZ() + Math.sin(angle) * rayon, uuid);
+													player.getZ() + Math.sin(angle) * rayon, uuid, player.level().dimension().location().toString());
 											pos.cachedSkin = DefaultPlayerSkin.get(uuid);
 											if (i % 3 == 0) {
 												pos.timestamp = System.currentTimeMillis() - i * 60 * 1000L;
@@ -336,10 +336,17 @@ public class XaeroHeadTrackerClient {
 		);
 
 
+		String maDimension = client.level != null ? client.level.dimension().location().toString() : "";
+
 		for (Map.Entry<String, PositionData> entree : positionsJoueurs.entrySet()) {
 			PositionData pos = entree.getValue();
 
 			if (client.player != null && pos.uuid.equals(client.player.getUUID())) {
+				continue;
+			}
+
+			// On ignore le joueur s'il n'est pas dans NOTRE dimension
+			if (!pos.dimension.equals(maDimension)) {
 				continue;
 			}
 
@@ -456,9 +463,10 @@ public class XaeroHeadTrackerClient {
 				existing.x = x;
 				existing.y = y;
 				existing.z = z;
+				existing.dimension = payload.dimension();
 				existing.timestamp = System.currentTimeMillis();
 			} else {
-				positionsJoueurs.put(pseudo, new PositionData(x, y, z, uuid));
+				positionsJoueurs.put(pseudo, new PositionData(x, y, z, uuid, payload.dimension()));
 			}
 		});
 	}
@@ -468,9 +476,11 @@ public class XaeroHeadTrackerClient {
 		public UUID uuid;
 		public long timestamp;
 		public PlayerSkin cachedSkin;
+		public String dimension;
 
-		public PositionData(double x, double y, double z, UUID uuid) {
+		public PositionData(double x, double y, double z, UUID uuid, String dimension) {
 			this.x = x; this.y = y; this.z = z; this.uuid = uuid;
+			this.dimension = dimension;
 			this.timestamp = System.currentTimeMillis();
 		}
 	}
