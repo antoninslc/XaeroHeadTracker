@@ -336,7 +336,9 @@ public class XaeroHeadTrackerClient {
 		);
 
 
-		String maDimension = client.level != null ? client.level.dimension().location().toString() : "";
+		// Dimension affichee par la carte, pas celle du joueur : le bouton de Xaero permet d'en voir une autre
+		var dimensionCarte = mapScreen.getMapProcessor().getMapWorld().getCurrentDimensionId();
+		String maDimension = dimensionCarte != null ? dimensionCarte.location().toString() : "";
 
 		for (Map.Entry<String, PositionData> entree : positionsJoueurs.entrySet()) {
 			PositionData pos = entree.getValue();
@@ -345,7 +347,7 @@ public class XaeroHeadTrackerClient {
 				continue;
 			}
 
-			// On ignore le joueur s'il n'est pas dans NOTRE dimension
+			// On ignore le joueur s'il n'est pas dans la dimension affichee
 			if (!pos.dimension.equals(maDimension)) {
 				continue;
 			}
