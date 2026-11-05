@@ -1,8 +1,11 @@
 package name.modid.client;
 
 import name.modid.PlayerPositionPayload;
+import name.modid.PlayerStopSharePayload;
+import name.modid.UpdateShareAudiencePayload;
 import name.modid.UpdateShareStatusPayload;
 import name.modid.XaeroHeadTracker;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.gui.GuiGraphics;
@@ -34,6 +37,7 @@ import xaero.map.graphics.MapRenderHelper;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -41,7 +45,10 @@ public class XaeroHeadTrackerClient {
 
 	public static final Map<String, PositionData> positionsJoueurs = new HashMap<>();
 
-	private static KeyMapping toucheParametres;
+	static KeyMapping toucheParametres;
+
+	// Serveur de la derniere connexion : ses tetes restent si on s'y reconnecte
+	private static String dernierServeur = null;
 
 	private static final String BOT_TEST_NAME = "BotTest";
 	private static final UUID BOT_TEST_UUID = UUID.fromString("00000000-0000-0000-0000-000000000001");
@@ -57,6 +64,17 @@ public class XaeroHeadTrackerClient {
 		}
 		botsMultiples.clear();
 		botsMultiplesEnLigne.clear();
+	}
+
+	/** Envoie qui peut me voir ; a envoyer avant le partage, pour que le serveur ne diffuse jamais avec une liste perimee. */
+	static void envoyerAudience() {
+		XaeroHeadTracker.CHANNEL.sendToServer(new UpdateShareAudiencePayload(PlayerVisibilityConfig.INSTANCE.getPartageTous(), PlayerVisibilityConfig.INSTANCE.getJoueursPartage()));
+	}
+
+	// La version du protocole refuse tout serveur sans la selection : pas de garde a faire ici
+	static void envoyerPartage() {
+		envoyerAudience();
+		XaeroHeadTracker.CHANNEL.sendToServer(new UpdateShareStatusPayload(PlayerVisibilityConfig.INSTANCE.getPartage()));
 	}
 
 	/** Cle de stockage du serveur courant : adresse en multijoueur, dossier de sauvegarde en solo (le nom affiche n'est pas unique). */
@@ -229,8 +247,25 @@ public class XaeroHeadTrackerClient {
 		@SubscribeEvent
 		public static void onPlayerJoin(ClientPlayerNetworkEvent.LoggingIn event) {
 			Minecraft client = Minecraft.getInstance();
-			PlayerVisibilityConfig.INSTANCE.definirServeurCourant(identifierServeur(client));
-			XaeroHeadTracker.CHANNEL.sendToServer(new UpdateShareStatusPayload(PlayerVisibilityConfig.INSTANCE.getPartage()));
+			String serveur = identifierServeur(client);
+			PlayerVisibilityConfig.INSTANCE.definirServeurCourant(serveur);
+
+			// Les tetes d'un autre serveur n'ont rien a faire sur cette carte ; reconnecte au meme, on garde les deconnectes
+			if (!Objects.equals(serveur, dernierServeur)) {
+				positionsJoueurs.clear();
+				dernierServeur = serveur;
+			}
+
+			envoyerPartage();
+		}
+
+		// La touche du raccourci ouvre aussi les reglages depuis la carte (les touches ne sont pas lues en tick quand un ecran est ouvert)
+		@SubscribeEvent
+		public static void onKeyPressedPre(ScreenEvent.KeyPressed.Pre event) {
+			if (event.getScreen().getClass().getName().contains("GuiMap") && toucheParametres.matches(event.getKeyCode(), event.getScanCode())) {
+				Minecraft.getInstance().setScreen(new ConfigScreen(event.getScreen()));
+				event.setCanceled(true);
+			}
 		}
 
 		@SubscribeEvent
@@ -370,7 +405,10 @@ public class XaeroHeadTrackerClient {
 						if (GuiMap.hiddenUI) {
 							return;
 						}
+						// Comme les boutons de Xaero : au survol, -1 pixel vers le haut et teinte plus sombre
 						int decalageY = this.isHovered() ? -1 : 0;
+						float gris = (this.isHovered() ? 0xE6 : 0xFC) / 255.0F;
+						guiGraphics.setColor(gris, gris, gris, 1.0F);
 						guiGraphics.blit(
 								EYE_TEXTURE,
 								this.getX(), this.getY() + decalageY,
@@ -378,16 +416,33 @@ public class XaeroHeadTrackerClient {
 								16, 16,
 								16, 16
 						);
+						guiGraphics.setColor(1.0F, 1.0F, 1.0F, 1.0F);
 					}
 
 					@Override
 					protected void updateWidgetNarration(NarrationElementOutput narrationElementOutput) {}
 				};
 
-				boutonOeil.setTooltip(Tooltip.create(Component.translatable("key.xaeroheadtracker.open_settings")));
+				boutonOeil.setTooltip(Tooltip.create(Component.translatable("gui.xaeroheadtracker.open_settings_tooltip", toucheParametres.getTranslatedKeyMessage().copy().withStyle(ChatFormatting.DARK_GREEN))));
 				event.addListener(boutonOeil);
 			}
 		}
+	}
+
+	public static void recevoirArretPartage(PlayerStopSharePayload payload) {
+		Minecraft.getInstance().execute(() -> {
+			if (payload.pseudo().equals(PlayerStopSharePayload.TOUS)) {
+				positionsJoueurs.clear();
+			} else if (payload.retirer()) {
+				positionsJoueurs.remove(payload.pseudo());
+			} else {
+				PositionData pos = positionsJoueurs.get(payload.pseudo());
+				if (pos != null) {
+					// Au-dela du seuil Live de 4 s : le statut passe tout de suite a "< 1 min"
+					pos.timestamp = System.currentTimeMillis() - 5000L;
+				}
+			}
+		});
 	}
 
 	public static void recevoirPositions(PlayerPositionPayload payload) {
