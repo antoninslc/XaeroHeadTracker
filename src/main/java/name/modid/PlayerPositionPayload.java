@@ -4,7 +4,7 @@ import net.minecraft.network.FriendlyByteBuf;
 
 import java.util.UUID;
 
-public record PlayerPositionPayload(String pseudo, UUID uuid, double x, double y, double z) {
+public record PlayerPositionPayload(String pseudo, UUID uuid, double x, double y, double z, String dimension) {
 
     public static void encode(PlayerPositionPayload p, FriendlyByteBuf buf) {
         buf.writeUtf(p.pseudo());
@@ -12,9 +12,10 @@ public record PlayerPositionPayload(String pseudo, UUID uuid, double x, double y
         buf.writeDouble(p.x());
         buf.writeDouble(p.y());
         buf.writeDouble(p.z());
+        buf.writeUtf(p.dimension());
     }
 
     public static PlayerPositionPayload decode(FriendlyByteBuf buf) {
-        return new PlayerPositionPayload(buf.readUtf(), buf.readUUID(), buf.readDouble(), buf.readDouble(), buf.readDouble());
+        return new PlayerPositionPayload(buf.readUtf(), buf.readUUID(), buf.readDouble(), buf.readDouble(), buf.readDouble(), buf.readUtf());
     }
 }

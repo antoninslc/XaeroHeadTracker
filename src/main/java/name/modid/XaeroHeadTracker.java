@@ -128,7 +128,7 @@ public class XaeroHeadTracker {
 					continue;
 				}
 
-				PlayerPositionPayload paquet = new PlayerPositionPayload(joueur.getName().getString(), uuid, joueur.getX(), joueur.getY(), joueur.getZ());
+				PlayerPositionPayload paquet = new PlayerPositionPayload(joueur.getName().getString(), uuid, joueur.getX(), joueur.getY(), joueur.getZ(), joueur.level().dimension().location().toString());
 
 				Set<UUID> audience = audiences.get(uuid);
 				for (ServerPlayer destinataire : server.getPlayerList().getPlayers()) {
