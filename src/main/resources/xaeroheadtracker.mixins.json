@@ -6,7 +6,8 @@
 	"mixins": [
 	],
 	"client": [
-		"GuiMapAccessor"
+		"GuiMapAccessor",
+		"GuiMapMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

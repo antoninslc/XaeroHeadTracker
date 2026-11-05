@@ -1,9 +1,12 @@
 package name.modid.client;
 
 import name.modid.PlayerPositionPayload;
+import name.modid.PlayerStopSharePayload;
+import name.modid.UpdateShareAudiencePayload;
 import name.modid.UpdateShareStatusPayload;
 import name.modid.XaeroHeadTracker;
 import name.modid.mixin.GuiMapAccessor;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.gui.GuiGraphics;
@@ -12,6 +15,7 @@ import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.resources.DefaultPlayerSkin;
 import net.minecraft.commands.Commands;
@@ -37,6 +41,7 @@ import xaero.map.graphics.MapRenderHelper;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -44,7 +49,10 @@ public class XaeroHeadTrackerClient {
 
 	public static final Map<String, PositionData> positionsJoueurs = new HashMap<>();
 
-	private static KeyMapping toucheParametres;
+	static KeyMapping toucheParametres;
+
+	// Serveur de la derniere connexion : ses tetes restent si on s'y reconnecte
+	private static String dernierServeur = null;
 
 	private static final String BOT_TEST_NAME = "BotTest";
 	private static final UUID BOT_TEST_UUID = UUID.fromString("00000000-0000-0000-0000-000000000001");
@@ -60,6 +68,28 @@ public class XaeroHeadTrackerClient {
 		}
 		botsMultiples.clear();
 		botsMultiplesEnLigne.clear();
+	}
+
+	/** Envoie qui peut me voir ; a envoyer avant le partage, pour que le serveur ne diffuse jamais avec une liste perimee. */
+	static boolean envoyerAudience() {
+		ClientPacketListener connexion = Minecraft.getInstance().getConnection();
+		if (connexion == null || !connexion.hasChannel(UpdateShareAudiencePayload.TYPE)) {
+			return false;
+		}
+		connexion.send(new UpdateShareAudiencePayload(PlayerVisibilityConfig.INSTANCE.getPartageTous(), PlayerVisibilityConfig.INSTANCE.getJoueursPartage()));
+		return true;
+	}
+
+	static void envoyerPartage() {
+		ClientPacketListener connexion = Minecraft.getInstance().getConnection();
+		if (connexion == null) {
+			return;
+		}
+		boolean audienceEnvoyee = envoyerAudience();
+		// Un serveur sans la selection diffuserait a tout le monde : avec une liste, on ne partage pas du tout
+		boolean partage = PlayerVisibilityConfig.INSTANCE.getPartage()
+				&& (audienceEnvoyee || PlayerVisibilityConfig.INSTANCE.getPartageTous());
+		connexion.send(new UpdateShareStatusPayload(partage));
 	}
 
 	/** Cle de stockage du serveur courant : adresse en multijoueur, dossier de sauvegarde en solo (le nom affiche n'est pas unique). */
@@ -215,9 +245,24 @@ public class XaeroHeadTrackerClient {
 		public static void onPlayerJoin(ClientPlayerNetworkEvent.LoggingIn event) {
 			// CORRECTION : Envoi du paquet via la connexion native du client
 			Minecraft client = Minecraft.getInstance();
-			PlayerVisibilityConfig.INSTANCE.definirServeurCourant(identifierServeur(client));
-			if (client.getConnection() != null) {
-				client.getConnection().send(new UpdateShareStatusPayload(PlayerVisibilityConfig.INSTANCE.getPartage()));
+			String serveur = identifierServeur(client);
+			PlayerVisibilityConfig.INSTANCE.definirServeurCourant(serveur);
+
+			// Les tetes d'un autre serveur n'ont rien a faire sur cette carte ; reconnecte au meme, on garde les deconnectes
+			if (!Objects.equals(serveur, dernierServeur)) {
+				positionsJoueurs.clear();
+				dernierServeur = serveur;
+			}
+
+			envoyerPartage();
+		}
+
+		// La touche du raccourci ouvre aussi les reglages depuis la carte (les touches ne sont pas lues en tick quand un ecran est ouvert)
+		@SubscribeEvent
+		public static void onKeyPressedPre(ScreenEvent.KeyPressed.Pre event) {
+			if (event.getScreen().getClass().getName().contains("GuiMap") && toucheParametres.matches(event.getKeyCode(), event.getScanCode())) {
+				Minecraft.getInstance().setScreen(new ConfigScreen(event.getScreen()));
+				event.setCanceled(true);
 			}
 		}
 
@@ -230,119 +275,6 @@ public class XaeroHeadTrackerClient {
 				if (mouseX >= 7 && mouseX <= 23 && mouseY >= 32 && mouseY <= 48 && event.getButton() == 0 && !GuiMap.hiddenUI) {
 					Minecraft.getInstance().setScreen(new ConfigScreen(event.getScreen()));
 					event.setCanceled(true);
-				}
-			}
-		}
-
-		@SubscribeEvent
-		public static void onScreenRenderPost(ScreenEvent.Render.Post event) {
-			net.minecraft.client.gui.screens.Screen screen = event.getScreen();
-			if (screen.getClass().getName().contains("GuiMap")) {
-				GuiGraphics guiGraphics = event.getGuiGraphics();
-				GuiMap mapScreen = (GuiMap) screen;
-				GuiMapAccessor accessor = (GuiMapAccessor) mapScreen;
-
-				double cameraX = accessor.getCameraX();
-				double cameraZ = accessor.getCameraZ();
-				double scale = accessor.getScale();
-				double screenScale = accessor.getScreenScale();
-				long tempsActuel = System.currentTimeMillis();
-
-				positionsJoueurs.entrySet().removeIf(entree ->
-						(tempsActuel - entree.getValue().timestamp) > 120 * 60 * 1000L
-				);
-
-				Minecraft client = Minecraft.getInstance();
-
-				for (Map.Entry<String, PositionData> entree : positionsJoueurs.entrySet()) {
-					PositionData pos = entree.getValue();
-
-					if (client.player != null && pos.uuid.equals(client.player.getUUID())) {
-						continue;
-					}
-
-					// Filtre des joueurs choisis : on ignore les joueurs masques
-					String pseudo = entree.getKey();
-					if (!PlayerVisibilityConfig.INSTANCE.estVisible(pos.uuid)) {
-						continue;
-					}
-					PlayerVisibilityConfig.INSTANCE.mettreAJourPseudo(pos.uuid, pseudo);
-
-					double drawX = screen.width / 2.0 + (pos.x - cameraX) * scale / screenScale;
-					double drawY = screen.height / 2.0 + (pos.z - cameraZ) * scale / screenScale;
-
-					if (drawX > 0 && drawX < screen.width && drawY > 0 && drawY < screen.height) {
-						int headSize = 8;
-
-						PlayerInfo info = client.getConnection() != null
-								? client.getConnection().getPlayerInfo(pos.uuid)
-								: null;
-
-						if (info != null) {
-							pos.cachedSkin = info.getSkin();
-						}
-
-						if (ModConfig.INSTANCE.showHeads) {
-							ResourceLocation skinTexture = null;
-							if (pos.cachedSkin != null) {
-								skinTexture = pos.cachedSkin.texture();
-							}
-							
-							if (skinTexture != null) {
-								guiGraphics.blit(
-										skinTexture,
-										(int) drawX - headSize / 2, (int) drawY - headSize / 2,
-										8.0F, 8.0F,
-										headSize, headSize,
-										64, 64
-								);
-							} else {
-								guiGraphics.fill((int) drawX - 3, (int) drawY - 3, (int) drawX + 3, (int) drawY + 3, 0xFFFF0000);
-							}
-						}
-
-						boolean avecTete = ModConfig.INSTANCE.showHeads;
-						// Sans tete, le pseudo est centre sur la position du joueur
-						int basBloc = avecTete ? (int) drawY + headSize / 2 : (int) drawY + 5;
-
-						if (ModConfig.INSTANCE.showNames) {
-							int pseudoY = avecTete ? (int) drawY - headSize / 2 - 10 : (int) drawY - 4;
-							guiGraphics.drawCenteredString(
-									client.font, pseudo,
-									(int) drawX, pseudoY,
-									-1
-							);
-						}
-
-						if (ModConfig.INSTANCE.showNames || avecTete) {
-							long msEcoulees = tempsActuel - pos.timestamp;
-							long minutesEcoulees = msEcoulees / 60000L;
-
-							String texteStatut;
-							if (msEcoulees <= 4000) {
-								texteStatut = "§aLive";
-							} else if (minutesEcoulees < 1) {
-								texteStatut = "§7< 1 min";
-							} else {
-								texteStatut = "§7" + minutesEcoulees + " min";
-							}
-
-							float echelle = 0.7F;
-							guiGraphics.pose().pushPose();
-							guiGraphics.pose().scale(echelle, echelle, 1.0F);
-
-							int cibleX = (int) (drawX / echelle);
-							int cibleY = (int) ((basBloc + 2) / echelle);
-
-							guiGraphics.drawCenteredString(
-									client.font, texteStatut,
-									cibleX, cibleY,
-									-1
-							);
-
-							guiGraphics.pose().popPose();
-						}
-					}
 				}
 			}
 		}
@@ -365,7 +297,10 @@ public class XaeroHeadTrackerClient {
 						if (GuiMap.hiddenUI) {
 							return;
 						}
+						// Comme les boutons de Xaero : au survol, -1 pixel vers le haut et teinte plus sombre
 						int decalageY = this.isHovered() ? -1 : 0;
+						float gris = (this.isHovered() ? 0xE6 : 0xFC) / 255.0F;
+						guiGraphics.setColor(gris, gris, gris, 1.0F);
 						guiGraphics.blit(
 								EYE_TEXTURE,
 								this.getX(), this.getY() + decalageY,
@@ -373,16 +308,140 @@ public class XaeroHeadTrackerClient {
 								16, 16,
 								16, 16
 						);
+						guiGraphics.setColor(1.0F, 1.0F, 1.0F, 1.0F);
 					}
 
 					@Override
 					protected void updateWidgetNarration(NarrationElementOutput narrationElementOutput) {}
 				};
 
-				boutonOeil.setTooltip(Tooltip.create(Component.translatable("key.xaeroheadtracker.open_settings")));
+				boutonOeil.setTooltip(Tooltip.create(Component.translatable("gui.xaeroheadtracker.open_settings_tooltip", toucheParametres.getTranslatedKeyMessage().copy().withStyle(ChatFormatting.DARK_GREEN))));
 				event.addListener(boutonOeil);
 			}
 		}
+	}
+
+	/** Appele par GuiMapMixin juste avant les boutons de Xaero : leurs cadres passent par-dessus les tetes. */
+	public static void dessinerTetes(Minecraft client, GuiMap mapScreen, GuiGraphics guiGraphics) {
+		GuiMapAccessor accessor = (GuiMapAccessor) mapScreen;
+
+		double cameraX = accessor.getCameraX();
+		double cameraZ = accessor.getCameraZ();
+		double scale = accessor.getScale();
+		double screenScale = accessor.getScreenScale();
+		long tempsActuel = System.currentTimeMillis();
+
+		positionsJoueurs.entrySet().removeIf(entree ->
+				(tempsActuel - entree.getValue().timestamp) > 120 * 60 * 1000L
+		);
+
+
+		for (Map.Entry<String, PositionData> entree : positionsJoueurs.entrySet()) {
+			PositionData pos = entree.getValue();
+
+			if (client.player != null && pos.uuid.equals(client.player.getUUID())) {
+				continue;
+			}
+
+			// Filtre des joueurs choisis : on ignore les joueurs masques
+			String pseudo = entree.getKey();
+			if (!PlayerVisibilityConfig.INSTANCE.estVisible(pos.uuid)) {
+				continue;
+			}
+			PlayerVisibilityConfig.INSTANCE.mettreAJourPseudo(pos.uuid, pseudo);
+
+			double drawX = mapScreen.width / 2.0 + (pos.x - cameraX) * scale / screenScale;
+			double drawY = mapScreen.height / 2.0 + (pos.z - cameraZ) * scale / screenScale;
+
+			if (drawX > 0 && drawX < mapScreen.width && drawY > 0 && drawY < mapScreen.height) {
+				int headSize = 8;
+
+				PlayerInfo info = client.getConnection() != null
+						? client.getConnection().getPlayerInfo(pos.uuid)
+						: null;
+
+				if (info != null) {
+					pos.cachedSkin = info.getSkin();
+				}
+
+				if (ModConfig.INSTANCE.showHeads) {
+					ResourceLocation skinTexture = null;
+					if (pos.cachedSkin != null) {
+						skinTexture = pos.cachedSkin.texture();
+					}
+					
+					if (skinTexture != null) {
+						guiGraphics.blit(
+								skinTexture,
+								(int) drawX - headSize / 2, (int) drawY - headSize / 2,
+								8.0F, 8.0F,
+								headSize, headSize,
+								64, 64
+						);
+					} else {
+						guiGraphics.fill((int) drawX - 3, (int) drawY - 3, (int) drawX + 3, (int) drawY + 3, 0xFFFF0000);
+					}
+				}
+
+				boolean avecTete = ModConfig.INSTANCE.showHeads;
+				// Sans tete, le pseudo est centre sur la position du joueur
+				int basBloc = avecTete ? (int) drawY + headSize / 2 : (int) drawY + 5;
+
+				if (ModConfig.INSTANCE.showNames) {
+					int pseudoY = avecTete ? (int) drawY - headSize / 2 - 10 : (int) drawY - 4;
+					guiGraphics.drawCenteredString(
+							client.font, pseudo,
+							(int) drawX, pseudoY,
+							-1
+					);
+				}
+
+				if (ModConfig.INSTANCE.showNames || avecTete) {
+					long msEcoulees = tempsActuel - pos.timestamp;
+					long minutesEcoulees = msEcoulees / 60000L;
+
+					String texteStatut;
+					if (msEcoulees <= 4000) {
+						texteStatut = "§aLive";
+					} else if (minutesEcoulees < 1) {
+						texteStatut = "§7< 1 min";
+					} else {
+						texteStatut = "§7" + minutesEcoulees + " min";
+					}
+
+					float echelle = 0.7F;
+					guiGraphics.pose().pushPose();
+					guiGraphics.pose().scale(echelle, echelle, 1.0F);
+
+					int cibleX = (int) (drawX / echelle);
+					int cibleY = (int) ((basBloc + 2) / echelle);
+
+					guiGraphics.drawCenteredString(
+							client.font, texteStatut,
+							cibleX, cibleY,
+							-1
+					);
+
+					guiGraphics.pose().popPose();
+				}
+			}
+		}
+	}
+
+	public static void recevoirArretPartage(PlayerStopSharePayload payload, IPayloadContext context) {
+		context.enqueueWork(() -> {
+			if (payload.pseudo().equals(PlayerStopSharePayload.TOUS)) {
+				positionsJoueurs.clear();
+			} else if (payload.retirer()) {
+				positionsJoueurs.remove(payload.pseudo());
+			} else {
+				PositionData pos = positionsJoueurs.get(payload.pseudo());
+				if (pos != null) {
+					// Au-dela du seuil Live de 4 s : le statut passe tout de suite a "< 1 min"
+					pos.timestamp = System.currentTimeMillis() - 5000L;
+				}
+			}
+		});
 	}
 
 	public static void recevoirPositions(PlayerPositionPayload payload, IPayloadContext context) {
