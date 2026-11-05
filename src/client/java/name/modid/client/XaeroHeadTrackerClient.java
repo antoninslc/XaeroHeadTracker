@@ -369,14 +369,16 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 				(tempsActuel - entree.getValue().timestamp) > 120 * 60 * 1000L
 		);
 
-		String maDimension = client.level != null ? client.level.dimension().location().toString() : "";
+		// Dimension affichee par la carte, pas celle du joueur : le bouton de Xaero permet d'en voir une autre
+		var dimensionCarte = mapScreen.getMapProcessor().getMapWorld().getCurrentDimensionId();
+		String maDimension = dimensionCarte != null ? dimensionCarte.location().toString() : "";
 
 		for (Map.Entry<String, PositionData> entree : positionsJoueurs.entrySet()) {
 			String pseudo = entree.getKey();
 			PositionData pos = entree.getValue();
 			UUID uuidJoueur = pos.uuid;
 
-			// On ignore le joueur s'il n'est pas dans NOTRE dimension
+			// On ignore le joueur s'il n'est pas dans la dimension affichee
 			if (!pos.dimension.equals(maDimension)) {
 				continue;
 			}
