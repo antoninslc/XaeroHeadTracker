@@ -4,8 +4,8 @@ import com.mojang.brigadier.arguments.BoolArgumentType;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.gamerule.v1.GameRuleBuilder;
-import net.fabricmc.fabric.api.gamerule.v1.GameRuleEvents;
+import net.fabricmc.fabric.api.gamerule.v1.GameRuleFactory;
+import net.fabricmc.fabric.api.gamerule.v1.GameRuleRegistry;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -17,7 +17,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.level.gamerules.GameRule;
+import net.minecraft.world.level.GameRules;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,8 +41,8 @@ public class XaeroHeadTracker implements ModInitializer {
 	private static final Map<UUID, Set<UUID>> audiences = new HashMap<>();
 
 	// Permet à l'admin de couper tout le partage du serveur ; le choix de chaque joueur reste en mémoire
-	public static final GameRule<Boolean> PARTAGE_AUTORISE = GameRuleBuilder.forBoolean(true)
-			.buildAndRegister(Identifier.fromNamespaceAndPath(MOD_ID, "allow_sharing"));
+	public static final GameRules.Key<GameRules.BooleanValue> PARTAGE_AUTORISE = GameRuleRegistry.register(MOD_ID + ":allow_sharing",
+			GameRules.Category.MISC, GameRuleFactory.createBooleanRule(true, (server, regle) -> partageAutoriseChange(server, regle.get())));
 
 	@Override
 	public void onInitialize() {
@@ -63,7 +63,7 @@ public class XaeroHeadTracker implements ModInitializer {
 			definirPartage(context.player(), payload.isSharing());
 
 			// Le client annonce son choix à chaque connexion : il a pu être absent au moment de la coupure
-			if (!context.player().level().getServer().overworld().getGameRules().get(PARTAGE_AUTORISE)
+			if (!context.player().level().getServer().overworld().getGameRules().getBoolean(PARTAGE_AUTORISE)
 					&& ServerPlayNetworking.canSend(context.player(), PlayerStopSharePayload.TYPE)) {
 				ServerPlayNetworking.send(context.player(), new PlayerStopSharePayload(PlayerStopSharePayload.TOUS, true));
 			}
@@ -74,15 +74,6 @@ public class XaeroHeadTracker implements ModInitializer {
 				diffuser(server, new PlayerStopSharePayload(handler.getPlayer().getName().getString(), false));
 			}
 			audiences.remove(handler.getPlayer().getUUID());
-		});
-
-		GameRuleEvents.changeCallback(PARTAGE_AUTORISE).register((autorise, server) -> {
-			if (!autorise) {
-				diffuser(server, new PlayerStopSharePayload(PlayerStopSharePayload.TOUS, true));
-			}
-			if (FabricLoader.getInstance().isDevelopmentEnvironment()) {
-				LOGGER.info("[XHT Dev] Partage autorise sur le serveur : {}", autorise);
-			}
 		});
 
 		// Dev uniquement : un faux joueur Carpet n'a pas de client pour envoyer son choix de partage
@@ -120,7 +111,7 @@ public class XaeroHeadTracker implements ModInitializer {
 			if (compteurTemps >= 20) {
 				compteurTemps = 0;
 
-				if (!server.overworld().getGameRules().get(PARTAGE_AUTORISE)) {
+				if (!server.overworld().getGameRules().getBoolean(PARTAGE_AUTORISE)) {
 					return;
 				}
 
@@ -151,6 +142,15 @@ public class XaeroHeadTracker implements ModInitializer {
 				}
 			}
 		});
+	}
+
+	private static void partageAutoriseChange(MinecraftServer server, boolean autorise) {
+		if (!autorise) {
+			diffuser(server, new PlayerStopSharePayload(PlayerStopSharePayload.TOUS, true));
+		}
+		if (FabricLoader.getInstance().isDevelopmentEnvironment()) {
+			LOGGER.info("[XHT Dev] Partage autorise sur le serveur : {}", autorise);
+		}
 	}
 
 	private static void diffuser(MinecraftServer server, CustomPacketPayload paquet) {
@@ -184,7 +184,7 @@ public class XaeroHeadTracker implements ModInitializer {
 	private static void definirPartage(ServerPlayer joueur, boolean actif) {
 		if (actif) {
 			joueursPartageant.add(joueur.getUUID());
-			if (!joueur.level().getServer().overworld().getGameRules().get(PARTAGE_AUTORISE)) {
+			if (!joueur.level().getServer().overworld().getGameRules().getBoolean(PARTAGE_AUTORISE)) {
 				joueur.sendSystemMessage(Component.translatable("message.xaeroheadtracker.sharing_disabled"));
 			}
 		} else if (joueursPartageant.remove(joueur.getUUID())) {

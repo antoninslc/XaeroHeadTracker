@@ -30,6 +30,6 @@
   "gui.xaeroheadtracker.no_players": "Aucun joueur trouvé",
   "key.xaeroheadtracker.open_settings": "Paramètres Head Tracker",
   "gui.xaeroheadtracker.open_settings_tooltip": "%s Paramètres Head Tracker",
-  "gamerule.xaeroheadtracker.allow_sharing": "Autoriser le partage de position Head Tracker",
+  "gamerule.xaeroheadtracker:allow_sharing": "Autoriser le partage de position Head Tracker",
   "message.xaeroheadtracker.sharing_disabled": "Head Tracker : le partage de position est désactivé sur ce serveur, ta position n'est pas envoyée."
 }

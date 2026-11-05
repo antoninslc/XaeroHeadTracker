@@ -5,7 +5,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.List;
 import java.util.UUID;
@@ -16,7 +16,7 @@ public record UpdateShareAudiencePayload(boolean tout, List<UUID> joueurs) imple
     // Le paquet vient du client : la taille est bornee. shortcut: au-dela, l'envoi echoue, a revoir si un joueur coche autant de monde
     public static final int MAX_JOUEURS = 1024;
 
-    public static final CustomPacketPayload.Type<UpdateShareAudiencePayload> TYPE = new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath("xaeroheadtracker", "update_share_audience"));
+    public static final CustomPacketPayload.Type<UpdateShareAudiencePayload> TYPE = new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath("xaeroheadtracker", "update_share_audience"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, UpdateShareAudiencePayload> CODEC = StreamCodec.composite(
             ByteBufCodecs.BOOL, UpdateShareAudiencePayload::tout,

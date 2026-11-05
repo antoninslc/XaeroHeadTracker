@@ -408,7 +408,7 @@ public class ConfigScreen extends Screen {
             graphics.fill(x + 3, y + 3, x + TAILLE_CASE - 3, y + TAILLE_CASE - 3, couleur);
         }
         if (survol) {
-            graphics.setTooltipForNextFrame(this.font, Component.translatable(infobulle), mouseX, mouseY);
+            this.setTooltipForNextRenderPass(Component.translatable(infobulle));
         }
     }
 
