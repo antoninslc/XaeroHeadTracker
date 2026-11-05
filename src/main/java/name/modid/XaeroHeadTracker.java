@@ -63,7 +63,7 @@ public class XaeroHeadTracker implements ModInitializer {
 			definirPartage(context.player(), payload.isSharing());
 
 			// Le client annonce son choix à chaque connexion : il a pu être absent au moment de la coupure
-			if (!context.player().level().getServer().getGameRules().get(PARTAGE_AUTORISE)
+			if (!context.player().level().getServer().overworld().getGameRules().get(PARTAGE_AUTORISE)
 					&& ServerPlayNetworking.canSend(context.player(), PlayerStopSharePayload.TYPE)) {
 				ServerPlayNetworking.send(context.player(), new PlayerStopSharePayload(PlayerStopSharePayload.TOUS, true));
 			}
@@ -120,7 +120,7 @@ public class XaeroHeadTracker implements ModInitializer {
 			if (compteurTemps >= 20) {
 				compteurTemps = 0;
 
-				if (!server.getGameRules().get(PARTAGE_AUTORISE)) {
+				if (!server.overworld().getGameRules().get(PARTAGE_AUTORISE)) {
 					return;
 				}
 
@@ -184,7 +184,7 @@ public class XaeroHeadTracker implements ModInitializer {
 	private static void definirPartage(ServerPlayer joueur, boolean actif) {
 		if (actif) {
 			joueursPartageant.add(joueur.getUUID());
-			if (!joueur.level().getServer().getGameRules().get(PARTAGE_AUTORISE)) {
+			if (!joueur.level().getServer().overworld().getGameRules().get(PARTAGE_AUTORISE)) {
 				joueur.sendSystemMessage(Component.translatable("message.xaeroheadtracker.sharing_disabled"));
 			}
 		} else if (joueursPartageant.remove(joueur.getUUID())) {
