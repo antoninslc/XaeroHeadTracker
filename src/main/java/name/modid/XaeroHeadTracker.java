@@ -10,6 +10,7 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
@@ -28,6 +29,9 @@ import java.util.UUID;
 public class XaeroHeadTracker {
 	public static final String MOD_ID = "xaeroheadtracker";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+
+	// Duree pendant laquelle la derniere position d'un partageur deconnecte reste visible
+	public static final long DUREE_ABSENT = 7L * 24 * 60 * 60 * 1000;
 
 	private int compteurTemps = 0;
 
@@ -48,6 +52,17 @@ public class XaeroHeadTracker {
 		// Enregistrement de la boucle (tick) sur le bus global du jeu
 		NeoForge.EVENT_BUS.addListener(this::onServerTick);
 		NeoForge.EVENT_BUS.addListener(this::onPlayerLoggedOut);
+		NeoForge.EVENT_BUS.addListener(this::onPlayerLoggedIn);
+		NeoForge.EVENT_BUS.addListener((ServerStartedEvent event) -> PositionsAbsents.charger(event.getServer()));
+	}
+
+	// Le joueur qui revient reprend la diffusion en direct ; il recoit les partageurs partis avant lui
+	private void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+		ServerPlayer joueur = (ServerPlayer) event.getEntity();
+		PositionsAbsents.retirer(joueur.getUUID());
+		if (joueur.level().getServer().getGameRules().getBoolean(PARTAGE_AUTORISE)) {
+			PositionsAbsents.envoyer(joueur);
+		}
 	}
 
 	private void registerNetworking(final RegisterPayloadHandlersEvent event) {
@@ -82,6 +97,12 @@ public class XaeroHeadTracker {
 				PlayerStopSharePayload.CODEC,
 				name.modid.client.XaeroHeadTrackerClient::recevoirArretPartage
 		);
+		// Facultatif : un client ou un serveur 2.2 (sans ce paquet) peut toujours se connecter avec la version 2
+		registrar.optional().playToClient(
+				PlayerLastPositionPayload.TYPE,
+				PlayerLastPositionPayload.CODEC,
+				name.modid.client.XaeroHeadTrackerClient::recevoirDernierePosition
+		);
 		registrar.playToServer(
 				UpdateShareAudiencePayload.TYPE,
 				UpdateShareAudiencePayload.CODEC,
@@ -94,6 +115,9 @@ public class XaeroHeadTracker {
 		ServerPlayer joueur = (ServerPlayer) event.getEntity();
 		if (joueursPartageant.remove(joueur.getUUID())) {
 			diffuser(joueur.level().getServer(), new PlayerStopSharePayload(joueur.getName().getString(), false));
+			if (joueur.level().getServer().getGameRules().getBoolean(PARTAGE_AUTORISE)) {
+				PositionsAbsents.ajouter(joueur, audiences.get(joueur.getUUID()));
+			}
 		}
 		audiences.remove(joueur.getUUID());
 	}
@@ -135,6 +159,7 @@ public class XaeroHeadTracker {
 	private static void partageAutoriseChange(MinecraftServer server, boolean autorise) {
 		if (!autorise) {
 			diffuser(server, new PlayerStopSharePayload(PlayerStopSharePayload.TOUS, true));
+			PositionsAbsents.vider();
 		}
 		if (!FMLEnvironment.production) {
 			LOGGER.info("[XHT Dev] Partage autorise sur le serveur : {}", autorise);
