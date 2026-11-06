@@ -6,7 +6,7 @@
   "gui.xaeroheadtracker.names": "Afficher les pseudos : ",
   "gui.xaeroheadtracker.names.tooltip": "Affiche le pseudo et le statut (Live, minutes depuis la déconnexion) de chaque joueur sur la carte.",
   "gui.xaeroheadtracker.share": "Partager ma position : ",
-  "gui.xaeroheadtracker.share.tooltip": "Permet aux autres joueurs qui ont le mod de voir ta position sur leur carte.",
+  "gui.xaeroheadtracker.share.tooltip": "Permet aux autres joueurs qui ont le mod de voir ta position sur leur carte. Quand tu pars, ta dernière position leur reste visible 7 jours, ou jusqu'à ton retour.",
   "gui.xaeroheadtracker.share_with": "Avec : ",
   "gui.xaeroheadtracker.share_with.everyone": "Tout le monde",
   "gui.xaeroheadtracker.share_with.selected": "Joueurs choisis",

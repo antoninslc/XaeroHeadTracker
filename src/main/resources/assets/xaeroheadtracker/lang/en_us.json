@@ -6,7 +6,7 @@
   "gui.xaeroheadtracker.names": "Show names: ",
   "gui.xaeroheadtracker.names.tooltip": "Shows the name and status (Live, minutes since disconnection) of each player on the map.",
   "gui.xaeroheadtracker.share": "Share my position: ",
-  "gui.xaeroheadtracker.share.tooltip": "Lets other players who have the mod see your position on their map.",
+  "gui.xaeroheadtracker.share.tooltip": "Lets other players who have the mod see your position on their map. After you leave, your last position stays visible to them for 7 days, or until you rejoin.",
   "gui.xaeroheadtracker.share_with": "With: ",
   "gui.xaeroheadtracker.share_with.everyone": "Everyone",
   "gui.xaeroheadtracker.share_with.selected": "Selected players",

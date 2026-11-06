@@ -1,6 +1,11 @@
 package name.modid.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import com.google.common.collect.ImmutableMultimap;
+import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.properties.Property;
+import com.mojang.authlib.properties.PropertyMap;
+import name.modid.PlayerLastPositionPayload;
 import name.modid.PlayerPositionPayload;
 import name.modid.PlayerStopSharePayload;
 import name.modid.UpdateShareAudiencePayload;
@@ -37,6 +42,10 @@ import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import xaero.map.WorldMap;
+import xaero.map.common.config.option.WorldMapProfiledConfigOptions;
 import xaero.map.graphics.MapRenderHelper;
 import xaero.map.gui.GuiMap;
 
@@ -380,8 +389,9 @@ public class XaeroHeadTrackerClient {
 
 		long tempsActuel = System.currentTimeMillis();
 
+		// Meme duree que celle gardee par le serveur pour les joueurs deconnectes
 		positionsJoueurs.entrySet().removeIf(entree ->
-				(tempsActuel - entree.getValue().timestamp) > 120 * 60 * 1000L
+				(tempsActuel - entree.getValue().timestamp) > XaeroHeadTracker.DUREE_ABSENT
 		);
 
 		// Dimension affichee par la carte, pas celle du joueur : le bouton de Xaero permet d'en voir une autre
@@ -397,8 +407,12 @@ public class XaeroHeadTrackerClient {
 				continue;
 			}
 
-			if (isMinimapInstalled && client.level != null && client.level.getPlayerByUUID(uuidJoueur) != null) {
-				continue;
+			// Joueur proche deja dessine par le radar de la Minimap : on ne le dessine pas une deuxieme fois
+			if (client.level != null) {
+				Player proche = client.level.getPlayerByUUID(uuidJoueur);
+				if (proche != null && minimapDessine(proche)) {
+					continue;
+				}
 			}
 
 			if (client.player != null && uuidJoueur.equals(client.player.getUUID())) {
@@ -425,21 +439,18 @@ public class XaeroHeadTrackerClient {
 					pos.texturePeau = info.getSkin().body().texturePath();
 				}
 
-				Identifier skinTextureToUse = pos.texturePeau;
+				// Joueur jamais vu dont le skin n'est pas (encore) charge : Steve ou Alex selon son UUID, comme en jeu
+				Identifier skinTextureToUse = pos.texturePeau != null ? pos.texturePeau : DefaultPlayerSkin.get(uuidJoueur).body().texturePath();
 
 				if (ModConfig.INSTANCE.showHeads) {
-					if (skinTextureToUse != null) {
-						guiGraphics.blit(
-								RenderPipelines.GUI_TEXTURED,
-								skinTextureToUse,
-								(int) drawX - headSize / 2, (int) drawY - headSize / 2,
-								8.0F, 8.0F,
-								headSize, headSize,
-								64, 64
-						);
-					} else {
-						guiGraphics.fill((int) drawX - 3, (int) drawY - 3, (int) drawX + 3, (int) drawY + 3, 0xFFFF0000);
-					}
+					guiGraphics.blit(
+							RenderPipelines.GUI_TEXTURED,
+							skinTextureToUse,
+							(int) drawX - headSize / 2, (int) drawY - headSize / 2,
+							8.0F, 8.0F,
+							headSize, headSize,
+							64, 64
+					);
 				}
 
 				boolean avecTete = ModConfig.INSTANCE.showHeads;
@@ -465,8 +476,10 @@ public class XaeroHeadTrackerClient {
 						texteStatut = "§aLive";
 					} else if (minutesEcoulees < 1) {
 						texteStatut = "§7< 1 min";
-					} else {
+					} else if (minutesEcoulees < 60) {
 						texteStatut = "§7" + minutesEcoulees + " min";
+					} else {
+						texteStatut = "§7" + minutesEcoulees / 60 + " h";
 					}
 
 					float echelle = 0.7F;
@@ -503,6 +516,58 @@ public class XaeroHeadTrackerClient {
 				}
 			}
 		});
+	}
+
+	/** Joueur parti avant notre connexion : le serveur a garde sa derniere position. */
+	public static void recevoirDernierePosition(PlayerLastPositionPayload payload, IPayloadContext context) {
+		context.enqueueWork(() -> {
+			PlayerPositionPayload p = payload.position();
+			PositionData pos = new PositionData(p.x(), p.y(), p.z(), p.uuid(), p.dimension());
+			pos.timestamp = System.currentTimeMillis() - payload.age();
+			PositionData connue = positionsJoueurs.get(p.pseudo());
+			if (connue != null && connue.timestamp >= pos.timestamp) {
+				return;
+			}
+			positionsJoueurs.put(p.pseudo(), pos);
+			if (!FMLEnvironment.isProduction()) {
+				XaeroHeadTracker.LOGGER.info("[XHT Dev] Derniere position de {} : {} il y a {} s", p.pseudo(), p.dimension(), payload.age() / 1000);
+			}
+			if (!payload.skin().isEmpty()) {
+				chargerSkin(Minecraft.getInstance(), pos, p.pseudo(), payload.skin(), payload.signature());
+			}
+		});
+	}
+
+	/** Telecharge le skin d'un joueur jamais vu a partir des textures envoyees par le serveur ; sans signature valide, le skin par defaut reste. */
+	private static void chargerSkin(Minecraft client, PositionData pos, String pseudo, String textures, String signature) {
+		Property propriete = new Property("textures", textures, signature.isEmpty() ? null : signature);
+		GameProfile profil = new GameProfile(pos.uuid, pseudo, new PropertyMap(ImmutableMultimap.of("textures", propriete)));
+		client.getSkinManager().get(profil).thenAccept(skin -> skin.ifPresent(s -> client.execute(() -> {
+			pos.texturePeau = s.body().texturePath();
+			if (!FMLEnvironment.isProduction()) {
+				XaeroHeadTracker.LOGGER.info("[XHT Dev] Skin de {} charge : {}", pseudo, pos.texturePeau);
+			}
+		})));
+	}
+
+	// Faux des qu'une Minimap trop ancienne n'a pas l'API du radar : on retombe alors sur le seul reglage de World Map
+	private static boolean radarLisible = true;
+
+	/** Vrai si la Minimap dessine deja ce joueur sur la carte : radar affiche par World Map et joueur present dans le radar. */
+	private static boolean minimapDessine(Entity joueur) {
+		if (!isMinimapInstalled || !Boolean.TRUE.equals(WorldMap.INSTANCE.getConfigs().getClientConfigManager()
+				.getEffective(WorldMapProfiledConfigOptions.MINIMAP_RADAR))) {
+			return false;
+		}
+		if (radarLisible) {
+			try {
+				return RadarMinimap.afficheEntite(joueur);
+			} catch (LinkageError e) {
+				radarLisible = false;
+				XaeroHeadTracker.LOGGER.warn("Radar de la Minimap illisible (version trop ancienne ?), les joueurs proches lui sont laisses", e);
+			}
+		}
+		return true;
 	}
 
 	public static void recevoirPositions(PlayerPositionPayload payload, IPayloadContext context) {

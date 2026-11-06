@@ -20,8 +20,12 @@ neoForge {
 		client {
 			client()
 			systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-			programArguments.addAll('--username', 'Joueur1')
-			programArguments.addAll('--quickPlaySingleplayer', 'New World (6)')
+			// -Pclient=<nom> : client a part (dossier run/client<nom>) ; -Pserveur : rejoint le serveur local (runServer)
+			def nom = project.findProperty('client') ?: 'Joueur1'
+			programArguments.addAll('--username', nom)
+			if (project.hasProperty('client')) gameDirectory = file("run/client${nom}")
+			if (project.hasProperty('serveur')) programArguments.addAll('--quickPlayMultiplayer', 'localhost')
+			else programArguments.addAll('--quickPlaySingleplayer', 'New World (6)')
 		}
 		client2 {
 			client()
@@ -52,6 +56,8 @@ tasks.matching { it.name == 'prepareClient2Run' || it.name == 'runClient2' }.con
 dependencies {
 	// NeoForge gère automatiquement la dépendance Minecraft
 	implementation "xaero.map:xaeroworldmap-neoforge-${project.minecraft_version}:${project.xaeroworldmap_version}"
+	// Radar de la Minimap lu par RadarMinimap ; absent du jar
+	compileOnly("xaero.minimap:xaerominimap-neoforge-${project.minecraft_version}:26.6.2") { transitive = false }
 }
 
 processResources {
