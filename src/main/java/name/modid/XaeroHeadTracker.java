@@ -9,6 +9,7 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.fml.common.Mod;
@@ -35,6 +36,14 @@ public class XaeroHeadTracker {
 	private static final String VERSION_PROTOCOLE = "2";
 	public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
 			new ResourceLocation(MOD_ID, "main"), () -> VERSION_PROTOCOLE, VERSION_PROTOCOLE::equals, VERSION_PROTOCOLE::equals);
+
+	// Canal a part et facultatif : un client ou un serveur 2.2 (sans lui) se connecte toujours, on ne lui envoie rien
+	private static final String VERSION_DERNIERES = "1";
+	public static final SimpleChannel CANAL_DERNIERES = NetworkRegistry.newSimpleChannel(new ResourceLocation(MOD_ID, "last_positions"),
+			() -> VERSION_DERNIERES, NetworkRegistry.acceptMissingOr(VERSION_DERNIERES), NetworkRegistry.acceptMissingOr(VERSION_DERNIERES));
+
+	// Duree pendant laquelle la derniere position d'un partageur deconnecte reste visible
+	public static final long DUREE_ABSENT = 7L * 24 * 60 * 60 * 1000;
 
 	private int compteurTemps = 0;
 
@@ -97,6 +106,27 @@ public class XaeroHeadTracker {
 					});
 					ctx.get().setPacketHandled(true);
 				});
+
+		CANAL_DERNIERES.registerMessage(0, PlayerLastPositionPayload.class, PlayerLastPositionPayload::encode, PlayerLastPositionPayload::decode,
+				(payload, ctx) -> {
+					DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> name.modid.client.XaeroHeadTrackerClient.recevoirDernierePosition(payload));
+					ctx.get().setPacketHandled(true);
+				});
+	}
+
+	@SubscribeEvent
+	public void onServerStarted(ServerStartedEvent event) {
+		PositionsAbsents.charger(event.getServer());
+	}
+
+	// Le joueur qui revient reprend la diffusion en direct ; il recoit les partageurs partis avant lui
+	@SubscribeEvent
+	public void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+		ServerPlayer joueur = (ServerPlayer) event.getEntity();
+		PositionsAbsents.retirer(joueur.getUUID());
+		if (joueur.getServer().getGameRules().getBoolean(PARTAGE_AUTORISE)) {
+			PositionsAbsents.envoyer(joueur);
+		}
 	}
 
 	@SubscribeEvent
@@ -104,6 +134,9 @@ public class XaeroHeadTracker {
 		ServerPlayer joueur = (ServerPlayer) event.getEntity();
 		if (joueursPartageant.remove(joueur.getUUID())) {
 			CHANNEL.send(PacketDistributor.ALL.noArg(), new PlayerStopSharePayload(joueur.getName().getString(), false));
+			if (joueur.getServer().getGameRules().getBoolean(PARTAGE_AUTORISE)) {
+				PositionsAbsents.ajouter(joueur, audiences.get(joueur.getUUID()));
+			}
 		}
 		audiences.remove(joueur.getUUID());
 	}
@@ -147,6 +180,7 @@ public class XaeroHeadTracker {
 	private static void partageAutoriseChange(MinecraftServer server, boolean autorise) {
 		if (!autorise) {
 			CHANNEL.send(PacketDistributor.ALL.noArg(), new PlayerStopSharePayload(PlayerStopSharePayload.TOUS, true));
+			PositionsAbsents.vider();
 		}
 		if (!FMLEnvironment.production) {
 			LOGGER.info("[XHT Dev] Partage autorise sur le serveur : {}", autorise);

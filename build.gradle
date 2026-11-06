@@ -19,8 +19,12 @@ legacyForge {
 	runs {
 		client {
 			client()
-			programArguments.addAll('--username', 'Joueur1')
-			programArguments.addAll('--quickPlaySingleplayer', "Test ${project.minecraft_version.replace('.', '_')}")
+			// -Pclient=<nom> : client a part (dossier run/client<nom>) ; -Pserveur : rejoint le serveur local (runServer)
+			def nom = project.findProperty('client') ?: 'Joueur1'
+			programArguments.addAll('--username', nom)
+			if (project.hasProperty('client')) gameDirectory = file("run/client${nom}")
+			if (project.hasProperty('serveur')) programArguments.addAll('--quickPlayMultiplayer', 'localhost')
+			else programArguments.addAll('--quickPlaySingleplayer', "Test ${project.minecraft_version.replace('.', '_')}")
 		}
 		client2 {
 			client()

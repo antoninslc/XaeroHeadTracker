@@ -1,5 +1,9 @@
 package name.modid.client;
 
+import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.minecraft.MinecraftProfileTexture;
+import com.mojang.authlib.properties.Property;
+import name.modid.PlayerLastPositionPayload;
 import name.modid.PlayerPositionPayload;
 import name.modid.PlayerStopSharePayload;
 import name.modid.UpdateShareAudiencePayload;
@@ -292,8 +296,9 @@ public class XaeroHeadTrackerClient {
 				double screenScale = lireChamp(screen, "screenScale");
 				long tempsActuel = System.currentTimeMillis();
 
+				// Meme duree que celle gardee par le serveur pour les joueurs deconnectes
 				positionsJoueurs.entrySet().removeIf(entree ->
-						(tempsActuel - entree.getValue().timestamp) > 120 * 60 * 1000L
+						(tempsActuel - entree.getValue().timestamp) > XaeroHeadTracker.DUREE_ABSENT
 				);
 
 				Minecraft client = Minecraft.getInstance();
@@ -335,18 +340,15 @@ public class XaeroHeadTrackerClient {
 						}
 
 						if (ModConfig.INSTANCE.showHeads) {
-							ResourceLocation skinTexture = pos.cachedSkin;
-							if (skinTexture != null) {
-								guiGraphics.blit(
-										skinTexture,
-										(int) drawX - headSize / 2, (int) drawY - headSize / 2,
-										8.0F, 8.0F,
-										headSize, headSize,
-										64, 64
-								);
-							} else {
-								guiGraphics.fill((int) drawX - 3, (int) drawY - 3, (int) drawX + 3, (int) drawY + 3, 0xFFFF0000);
-							}
+							// Joueur jamais vu dont le skin n'est pas (encore) charge : Steve ou Alex selon son UUID, comme en jeu
+							ResourceLocation skinTexture = pos.cachedSkin != null ? pos.cachedSkin : DefaultPlayerSkin.getDefaultSkin(pos.uuid);
+							guiGraphics.blit(
+									skinTexture,
+									(int) drawX - headSize / 2, (int) drawY - headSize / 2,
+									8.0F, 8.0F,
+									headSize, headSize,
+									64, 64
+							);
 						}
 
 						boolean avecTete = ModConfig.INSTANCE.showHeads;
@@ -371,8 +373,10 @@ public class XaeroHeadTrackerClient {
 								texteStatut = "§aLive";
 							} else if (minutesEcoulees < 1) {
 								texteStatut = "§7< 1 min";
-							} else {
+							} else if (minutesEcoulees < 60) {
 								texteStatut = "§7" + minutesEcoulees + " min";
+							} else {
+								texteStatut = "§7" + minutesEcoulees / 60 + " h";
 							}
 
 							float echelle = 0.7F;
@@ -449,6 +453,36 @@ public class XaeroHeadTrackerClient {
 					// Au-dela du seuil Live de 4 s : le statut passe tout de suite a "< 1 min"
 					pos.timestamp = System.currentTimeMillis() - 5000L;
 				}
+			}
+		});
+	}
+
+	/** Joueur parti avant notre connexion : le serveur a garde sa derniere position. */
+	public static void recevoirDernierePosition(PlayerLastPositionPayload payload) {
+		Minecraft.getInstance().execute(() -> {
+			PlayerPositionPayload p = payload.position();
+			PositionData pos = new PositionData(p.x(), p.y(), p.z(), p.uuid(), p.dimension());
+			pos.timestamp = System.currentTimeMillis() - payload.age();
+			PositionData connue = positionsJoueurs.get(p.pseudo());
+			if (connue != null && connue.timestamp >= pos.timestamp) {
+				return;
+			}
+			positionsJoueurs.put(p.pseudo(), pos);
+			if (!FMLEnvironment.production) {
+				XaeroHeadTracker.LOGGER.info("[XHT Dev] Derniere position de {} : {} il y a {} s", p.pseudo(), p.dimension(), payload.age() / 1000);
+			}
+			if (!payload.skin().isEmpty()) {
+				// Telecharge le skin d'un joueur jamais vu ; sans signature valide, le skin par defaut reste
+				GameProfile profil = new GameProfile(p.uuid(), p.pseudo());
+				profil.getProperties().put("textures", new Property("textures", payload.skin(), payload.signature().isEmpty() ? null : payload.signature()));
+				Minecraft.getInstance().getSkinManager().registerSkins(profil, (type, texture, infos) -> {
+					if (type == MinecraftProfileTexture.Type.SKIN) {
+						pos.cachedSkin = texture;
+						if (!FMLEnvironment.production) {
+							XaeroHeadTracker.LOGGER.info("[XHT Dev] Skin de {} charge : {}", p.pseudo(), texture);
+						}
+					}
+				}, true);
 			}
 		});
 	}
