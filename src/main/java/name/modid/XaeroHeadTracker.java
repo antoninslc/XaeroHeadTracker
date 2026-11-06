@@ -4,8 +4,15 @@ import com.mojang.brigadier.arguments.BoolArgumentType;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+//? if >=1.21.11 {
 import net.fabricmc.fabric.api.gamerule.v1.GameRuleBuilder;
 import net.fabricmc.fabric.api.gamerule.v1.GameRuleEvents;
+import net.minecraft.world.level.gamerules.GameRule;
+//?} else {
+/*import net.fabricmc.fabric.api.gamerule.v1.GameRuleFactory;
+import net.fabricmc.fabric.api.gamerule.v1.GameRuleRegistry;
+import net.minecraft.world.level.GameRules;
+*///?}
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -17,7 +24,6 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.level.gamerules.GameRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,8 +47,26 @@ public class XaeroHeadTracker implements ModInitializer {
 	private static final Map<UUID, Set<UUID>> audiences = new HashMap<>();
 
 	// Permet à l'admin de couper tout le partage du serveur ; le choix de chaque joueur reste en mémoire
+	//? if >=1.21.11 {
 	public static final GameRule<Boolean> PARTAGE_AUTORISE = GameRuleBuilder.forBoolean(true)
 			.buildAndRegister(Identifier.fromNamespaceAndPath(MOD_ID, "allow_sharing"));
+	//?} else {
+	/*public static final GameRules.Key<GameRules.BooleanValue> PARTAGE_AUTORISE = GameRuleRegistry.register(MOD_ID + ":allow_sharing",
+			GameRules.Category.MISC, GameRuleFactory.createBooleanRule(true, (server, regle) -> partageAutoriseChange(server, regle.get())));
+	*///?}
+
+	//? if >=1.21.11 {
+	private static void partageAutoriseChange(boolean autorise, MinecraftServer server) {
+	//?} else {
+	/*private static void partageAutoriseChange(MinecraftServer server, boolean autorise) {
+	*///?}
+		if (!autorise) {
+			diffuser(server, new PlayerStopSharePayload(PlayerStopSharePayload.TOUS, true));
+		}
+		if (FabricLoader.getInstance().isDevelopmentEnvironment()) {
+			LOGGER.info("[XHT Dev] Partage autorise sur le serveur : {}", autorise);
+		}
+	}
 
 	@Override
 	public void onInitialize() {
@@ -73,14 +97,9 @@ public class XaeroHeadTracker implements ModInitializer {
 			audiences.remove(handler.getPlayer().getUUID());
 		});
 
-		GameRuleEvents.changeCallback(PARTAGE_AUTORISE).register((autorise, server) -> {
-			if (!autorise) {
-				diffuser(server, new PlayerStopSharePayload(PlayerStopSharePayload.TOUS, true));
-			}
-			if (FabricLoader.getInstance().isDevelopmentEnvironment()) {
-				LOGGER.info("[XHT Dev] Partage autorise sur le serveur : {}", autorise);
-			}
-		});
+		//? if >=1.21.11 {
+		GameRuleEvents.changeCallback(PARTAGE_AUTORISE).register(XaeroHeadTracker::partageAutoriseChange);
+		//?}
 
 		// Dev uniquement : un faux joueur Carpet n'a pas de client pour envoyer son choix de partage
 		if (FabricLoader.getInstance().isDevelopmentEnvironment()) {

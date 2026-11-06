@@ -15,10 +15,12 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.Screen;
+//? if >=1.21.11 {
 import net.minecraft.client.input.InputWithModifiers;
 import net.minecraft.client.input.MouseButtonEvent;
-import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.renderer.RenderPipelines;
+//?}
+import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.network.chat.Component;
 
 import name.modid.PlayerPositionPayload;
@@ -29,7 +31,9 @@ import name.modid.XaeroHeadTracker;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.storage.LevelResource;
 import xaero.map.gui.GuiMap;
+//? if >=26 {
 import xaero.map.graphics.MapRenderHelper;
+//?}
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -65,7 +69,11 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 	private static final Set<String> botsMultiples = new HashSet<>();
 
 	// 1. On déclare officiellement notre propre catégorie dans les paramètres du jeu
+	//? if >=1.21.11 {
 	private static final KeyMapping.Category CATEGORIE_MOD = KeyMapping.Category.register(Identifier.fromNamespaceAndPath("xaeroheadtracker", "parametres"));
+	//?} else {
+	/*private static final String CATEGORIE_MOD = "key.category.xaeroheadtracker.parametres";
+	*///?}
 
 	// 2. Notre raccourci clavier
 	static KeyMapping toucheParametres;
@@ -300,16 +308,27 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 				AbstractButton boutonOeil = new AbstractButton(7, 32, 16, 16, Component.literal("O")) {
 
 					@Override
+					//? if >=1.21.11 {
 					public void onPress(InputWithModifiers input) {
+					//?} else {
+					/*public void onPress() {
+					*///?}
 						client.gui.setScreen(new ConfigScreen(screen));
 					}
 
 					@Override
+					//? if >=26 {
 					protected void extractContents(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+					//?} else if >=1.21.11 {
+					/*protected void renderContents(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+					*///?} else {
+					/*protected void renderWidget(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+					*///?}
 						// Si la souris est dessus, le décalage est de -1 pixel (vers le haut), sinon 0
 						int decalageY = this.isHovered() ? -1 : 0;
 
 						// Meme teinte au survol que les boutons de Xaero
+						//? if >=1.21.11 {
 						int teinte = this.isHovered() ? 0xFFE6E6E6 : 0xFFFCFCFC;
 
 						guiGraphics.blit(
@@ -321,6 +340,19 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 								16, 16,
 								teinte
 						);
+						//?} else {
+						/*float gris = (this.isHovered() ? 0xE6 : 0xFC) / 255.0F;
+
+						guiGraphics.setColor(gris, gris, gris, 1.0F);
+						guiGraphics.blit(
+								EYE_TEXTURE,
+								this.getX(), this.getY() + decalageY,
+								0.0F, 0.0F,
+								16, 16,
+								16, 16
+						);
+						guiGraphics.setColor(1.0F, 1.0F, 1.0F, 1.0F);
+						*///?}
 					}
 
 					@Override
@@ -331,16 +363,30 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 
 				// 2. RENDU FORCÉ À LA TOUTE FIN : On dessine par-dessus la carte de Xaero sans widget plein écran
 				ScreenEvents.afterExtract(screen).register((s, guiGraphics, mouseX, mouseY, partialTick) -> {
+					// World Map 1.41.3 (Fabric 26.2) n'a pas GuiMap.hiddenUI
+					//? if >=26.3 || <26 {
 					if (!GuiMap.hiddenUI) {
+					//?}
 						boutonOeil.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
 						// Cet evenement passe apres le rendu des infobulles de l'ecran : on affiche la notre tout de suite
+						//? if >=26 {
 						guiGraphics.extractDeferredElements(mouseX, mouseY, partialTick);
+						//?} else if >=1.21.11 {
+						/*guiGraphics.renderDeferredElements();
+						*///?}
+					//? if >=26.3 || <26 {
 					}
+					//?}
 				});
 
 				// La touche du raccourci ouvre aussi les reglages depuis la carte (les touches ne sont pas lues en tick quand un ecran est ouvert)
+				//? if >=1.21.11 {
 				ScreenKeyboardEvents.allowKeyPress(screen).register((s, event) -> {
 					if (toucheParametres.matches(event)) {
+				//?} else {
+				/*ScreenKeyboardEvents.allowKeyPress(screen).register((s, touche, scancode, modificateurs) -> {
+					if (toucheParametres.matches(touche, scancode)) {
+				*///?}
 						client.gui.setScreen(new ConfigScreen(screen));
 						return false;
 					}
@@ -348,9 +394,23 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 				});
 
 				// 3. GESTION MANUELLE DES CLICS : On intercepte le clic sur l'œil avant Xaero
+				//? if >=26.3 {
 				ScreenMouseEvents.allowMouseClick(screen).register((Screen s, MouseButtonEvent context) -> {
 					if (!GuiMap.hiddenUI && boutonOeil.isMouseOver(context.x(), context.y())) {
 						boutonOeil.mouseClicked(context, false);
+				//?} else if >=26 {
+				/*ScreenMouseEvents.allowMouseClick(screen).register((Screen s, MouseButtonEvent context) -> {
+					if (boutonOeil.isMouseOver(context.x(), context.y())) {
+						boutonOeil.mouseClicked(context, false);
+				*///?} else if >=1.21.11 {
+				/*ScreenMouseEvents.allowMouseClick(screen).register((s, event) -> {
+					if (!GuiMap.hiddenUI && boutonOeil.isMouseOver(event.x(), event.y())) {
+						boutonOeil.mouseClicked(event, false);
+				*///?} else {
+				/*ScreenMouseEvents.allowMouseClick(screen).register((s, sourisX, sourisY, boutonSouris) -> {
+					if (!GuiMap.hiddenUI && boutonOeil.isMouseOver(sourisX, sourisY)) {
+						boutonOeil.mouseClicked(sourisX, sourisY, boutonSouris);
+				*///?}
 						return false; // on absorbe le clic, Xaero ne le reçoit jamais
 					}
 					return true;
@@ -423,6 +483,7 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 
 				if (ModConfig.INSTANCE.showHeads) {
 					if (skinTextureToUse != null) {
+						//? if >=26 {
 						guiGraphics.blit(
 								RenderPipelines.GUI_TEXTURED,
 								skinTextureToUse,
@@ -431,6 +492,25 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 								headSize, headSize,
 								64, 64
 						);
+						//?} else if >=1.21.11 {
+						/*guiGraphics.blit(
+								RenderPipelines.GUI_TEXTURED,
+								skinTextureToUse,
+								(int) drawX - headSize / 2, (int) drawY - headSize / 2,
+								8.0F, 8.0F,
+								headSize, headSize,
+								8, 8,
+								64, 64
+						);
+						*///?} else {
+						/*guiGraphics.blit(
+								skinTextureToUse,
+								(int) drawX - headSize / 2, (int) drawY - headSize / 2,
+								8.0F, 8.0F,
+								headSize, headSize,
+								64, 64
+						);
+						*///?}
 					} else {
 						guiGraphics.fill((int) drawX - 3, (int) drawY - 3, (int) drawX + 3, (int) drawY + 3, 0xFFFF0000);
 					}
@@ -442,12 +522,20 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 
 				if (ModConfig.INSTANCE.showNames) {
 					int pseudoY = avecTete ? (int) drawY - headSize / 2 - 10 : (int) drawY - 4;
+					//? if >=26 {
 					MapRenderHelper.drawCenteredStringWithBackground(
 							guiGraphics, client.font, pseudo,
 							(int) drawX, pseudoY,
 							-1,
 							0.0F, 0.0F, 0.0F, 0.4F
 					);
+					//?} else {
+					/*guiGraphics.drawCenteredString(
+							client.font, pseudo,
+							(int) drawX, pseudoY,
+							-1
+					);
+					*///?}
 				}
 
 				if (ModConfig.INSTANCE.showNames || avecTete) {
@@ -471,12 +559,20 @@ public class XaeroHeadTrackerClient implements ClientModInitializer {
 					int cibleX = (int) (drawX / echelle);
 					int cibleY = (int) ((basBloc + 2) / echelle);
 
+					//? if >=26 {
 					MapRenderHelper.drawCenteredStringWithBackground(
 							guiGraphics, client.font, texteStatut,
 							cibleX, cibleY,
 							-1,
 							0.0F, 0.0F, 0.0F, 0.4F
 					);
+					//?} else {
+					/*guiGraphics.drawCenteredString(
+							client.font, texteStatut,
+							cibleX, cibleY,
+							-1
+					);
+					*///?}
 
 					guiGraphics.pose().popMatrix();
 				}

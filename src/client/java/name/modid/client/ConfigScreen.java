@@ -5,10 +5,16 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
+//? if >=1.21.11 {
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
-import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.renderer.RenderPipelines;
+//?} else {
+/*import com.mojang.blaze3d.systems.RenderSystem;
+import net.minecraft.client.Minecraft;
+import org.lwjgl.opengl.GL11;
+*///?}
+import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.resources.DefaultPlayerSkin;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -292,13 +298,25 @@ public class ConfigScreen extends Screen {
     }
 
     @Override
+    //? if >=1.21.11 {
     public boolean keyPressed(KeyEvent event) {
+    //?} else {
+    /*public boolean keyPressed(int touche, int scancode, int modificateurs) {
+    *///?}
         // La touche des reglages les referme aussi, sauf pendant la saisie dans la recherche
+        //? if >=1.21.11 {
         if (!barreRecherche.isFocused() && XaeroHeadTrackerClient.toucheParametres.matches(event)) {
+        //?} else {
+        /*if (!barreRecherche.isFocused() && XaeroHeadTrackerClient.toucheParametres.matches(touche, scancode)) {
+        *///?}
             onClose();
             return true;
         }
+        //? if >=1.21.11 {
         return super.keyPressed(event);
+        //?} else {
+        /*return super.keyPressed(touche, scancode, modificateurs);
+        *///?}
     }
 
     @Override
@@ -320,6 +338,11 @@ public class ConfigScreen extends Screen {
         if (ecranPrecedent != null) {
             // La carte reste visible derriere, comme pour les ecrans de Xaero ; souris hors ecran pour qu'elle ne reagisse pas
             ecranPrecedent.extractRenderState(graphics, -1, -1, partialTick);
+            //? if <1.21.11 {
+            /*// La fleche du joueur ecrit dans le tampon de profondeur : on le vide pour que notre voile passe devant
+            graphics.flush();
+            RenderSystem.clear(GL11.GL_DEPTH_BUFFER_BIT, Minecraft.ON_OSX);
+            *///?}
             graphics.fill(0, 0, this.width, this.height, 0x90000000);
         }
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
@@ -374,8 +397,13 @@ public class ConfigScreen extends Screen {
         Identifier peau = l.peau != null ? l.peau : DefaultPlayerSkin.get(l.uuid).body().texturePath();
         int teteX = listeX + 4;
         int teteY = y + (HAUTEUR_LIGNE - TAILLE_TETE) / 2;
+        //? if >=1.21.11 {
         graphics.blit(RenderPipelines.GUI_TEXTURED, peau, teteX, teteY, 8.0F, 8.0F, TAILLE_TETE, TAILLE_TETE, 8, 8, 64, 64);
         graphics.blit(RenderPipelines.GUI_TEXTURED, peau, teteX, teteY, 40.0F, 8.0F, TAILLE_TETE, TAILLE_TETE, 8, 8, 64, 64);
+        //?} else {
+        /*graphics.blit(peau, teteX, teteY, TAILLE_TETE, TAILLE_TETE, 8.0F, 8.0F, 8, 8, 64, 64);
+        graphics.blit(peau, teteX, teteY, TAILLE_TETE, TAILLE_TETE, 40.0F, 8.0F, 8, 8, 64, 64);
+        *///?}
 
         // Pseudo (gris si hors ligne)
         int couleur = l.enLigne ? 0xFFFFFFFF : 0xFF808080;
@@ -403,7 +431,11 @@ public class ConfigScreen extends Screen {
             graphics.fill(x + 3, y + 3, x + TAILLE_CASE - 3, y + TAILLE_CASE - 3, couleur);
         }
         if (survol) {
+            //? if >=1.21.11 {
             graphics.setTooltipForNextFrame(this.font, Component.translatable(infobulle), mouseX, mouseY);
+            //?} else {
+            /*this.setTooltipForNextRenderPass(Component.translatable(infobulle));
+            *///?}
         }
     }
 
@@ -412,12 +444,19 @@ public class ConfigScreen extends Screen {
     }
 
     @Override
+    //? if >=1.21.11 {
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         if (super.mouseClicked(event, doubleClick)) {
+    //?} else {
+    /*public boolean mouseClicked(double mx, double my, int button) {
+        if (super.mouseClicked(mx, my, button)) {
+    *///?}
             return true;
         }
+        //? if >=1.21.11 {
         double mx = event.x();
         double my = event.y();
+        //?}
         if (mx < listeX || mx >= listeX + listeLargeur || my < listeY || my >= listeY + listeHauteur) {
             return false;
         }

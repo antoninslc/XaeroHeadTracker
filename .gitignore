@@ -41,3 +41,7 @@ replay_*.log
 
 # secrets (tokens Modrinth/CurseForge)
 scratch/
+
+# stonecutter
+/versions/
+/.stonecutter/
