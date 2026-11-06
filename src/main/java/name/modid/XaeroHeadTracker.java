@@ -3,6 +3,7 @@ package name.modid;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 //? if >=1.21.11 {
 import net.fabricmc.fabric.api.gamerule.v1.GameRuleBuilder;
@@ -38,6 +39,9 @@ public class XaeroHeadTracker implements ModInitializer {
 	public static final String MOD_ID = "xaeroheadtracker";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
+	// Duree pendant laquelle la derniere position d'un partageur deconnecte reste visible
+	public static final long DUREE_ABSENT = 7L * 24 * 60 * 60 * 1000;
+
 	private int compteurTemps = 0;
 
 	// UUID des joueurs qui ont demandé à partager : sans le mod ou juste après la connexion, un joueur n'y figure pas
@@ -62,6 +66,7 @@ public class XaeroHeadTracker implements ModInitializer {
 	*///?}
 		if (!autorise) {
 			diffuser(server, new PlayerStopSharePayload(PlayerStopSharePayload.TOUS, true));
+			PositionsAbsents.vider();
 		}
 		if (FabricLoader.getInstance().isDevelopmentEnvironment()) {
 			LOGGER.info("[XHT Dev] Partage autorise sur le serveur : {}", autorise);
@@ -73,6 +78,7 @@ public class XaeroHeadTracker implements ModInitializer {
 		// 1. Déclarations S2C et C2S
 		PayloadTypeRegistry.clientboundPlay().register(PlayerPositionPayload.TYPE, PlayerPositionPayload.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(PlayerStopSharePayload.TYPE, PlayerStopSharePayload.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(PlayerLastPositionPayload.TYPE, PlayerLastPositionPayload.CODEC);
 		PayloadTypeRegistry.serverboundPlay().register(UpdateShareStatusPayload.TYPE, UpdateShareStatusPayload.CODEC);
 		PayloadTypeRegistry.serverboundPlay().register(UpdateShareAudiencePayload.TYPE, UpdateShareAudiencePayload.CODEC);
 
@@ -90,12 +96,18 @@ public class XaeroHeadTracker implements ModInitializer {
 			}
 		});
 
-		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
-			if (joueursPartageant.remove(handler.getPlayer().getUUID())) {
-				diffuser(server, new PlayerStopSharePayload(handler.getPlayer().getName().getString(), false));
+		ServerLifecycleEvents.SERVER_STARTED.register(PositionsAbsents::charger);
+
+		// Le joueur qui revient reprend la diffusion en direct ; il recoit les partageurs partis avant lui
+		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
+			PositionsAbsents.retirer(handler.getPlayer().getUUID());
+			if (server.getGameRules().get(PARTAGE_AUTORISE)) {
+				PositionsAbsents.envoyer(handler.getPlayer());
 			}
-			audiences.remove(handler.getPlayer().getUUID());
 		});
+
+		// Une connexion coupee arrive sur un thread reseau : les listes ne sont touchees que sur le thread du serveur
+		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> server.execute(() -> quitter(handler.getPlayer(), server)));
 
 		//? if >=1.21.11 {
 		GameRuleEvents.changeCallback(PARTAGE_AUTORISE).register(XaeroHeadTracker::partageAutoriseChange);
@@ -105,6 +117,13 @@ public class XaeroHeadTracker implements ModInitializer {
 		if (FabricLoader.getInstance().isDevelopmentEnvironment()) {
 			CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
 					dispatcher.register(Commands.literal("xhtdev")
+							// Carpet ne declenche pas DISCONNECT de Fabric : a lancer avant /player <nom> kill
+							.then(Commands.literal("quitter")
+									.then(Commands.argument("joueur", EntityArgument.player()).executes(ctx -> {
+										ServerPlayer joueur = EntityArgument.getPlayer(ctx, "joueur");
+										quitter(joueur, joueur.level().getServer());
+										return 1;
+									})))
 							.then(Commands.literal("partage")
 									.then(Commands.argument("joueur", EntityArgument.player())
 											.then(Commands.argument("actif", BoolArgumentType.bool())
@@ -165,6 +184,16 @@ public class XaeroHeadTracker implements ModInitializer {
 				}
 			}
 		});
+	}
+
+	private static void quitter(ServerPlayer joueur, MinecraftServer server) {
+		if (joueursPartageant.remove(joueur.getUUID())) {
+			diffuser(server, new PlayerStopSharePayload(joueur.getName().getString(), false));
+			if (server.getGameRules().get(PARTAGE_AUTORISE)) {
+				PositionsAbsents.ajouter(joueur, audiences.get(joueur.getUUID()));
+			}
+		}
+		audiences.remove(joueur.getUUID());
 	}
 
 	private static void diffuser(MinecraftServer server, CustomPacketPayload paquet) {

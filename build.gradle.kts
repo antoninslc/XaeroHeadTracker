@@ -9,14 +9,15 @@ class Versions(
     val carpet: String,
     val java: Int,
     val loader: String,
+    val minimap: String,
 )
 
 val mc: String = stonecutter.current.version
 val v = mapOf(
-    "26.3" to Versions("0.163.0+26.3", "1.47.0", "26.3", 25, "0.19.5"),
-    "26.2" to Versions("0.153.0+26.2", "1.41.3", "26.2", 25, "0.19.3"),
-    "1.21.11" to Versions("0.141.6+1.21.11", "1.47.0", "1.4.194", 21, "0.19.3"),
-    "1.21.1" to Versions("0.116.12+1.21.1", "1.47.0", "1.4.147", 21, "0.19.3"),
+    "26.3" to Versions("0.163.0+26.3", "1.47.2", "26.3", 25, "0.19.5", "26.6.2"),
+    "26.2" to Versions("0.153.0+26.2", "1.41.3", "26.2", 25, "0.19.3", "26.6.2"),
+    "1.21.11" to Versions("0.141.6+1.21.11", "1.47.2", "1.4.194", 21, "0.19.3", "26.6.2"),
+    "1.21.1" to Versions("0.116.12+1.21.1", "1.47.0", "1.4.147", 21, "0.19.3", "26.6.0"),
 ).getValue(mc)
 
 version = property("mod_version") as String
@@ -42,7 +43,14 @@ loom {
 
     runs {
         named("client") {
-            programArgs("--quickPlaySingleplayer", "Test ${mc.replace('.', '_')}")
+            // -Pserveur : rejoint le serveur local (runServer) au lieu du monde de test
+            if (project.hasProperty("serveur")) programArgs("--quickPlayMultiplayer", "localhost")
+            else programArgs("--quickPlaySingleplayer", "Test ${mc.replace('.', '_')}")
+            // -Pclient=<nom> : client a part (dossier run/client<nom>, pseudo <nom>) pour tester a plusieurs
+            findProperty("client")?.let {
+                runDir("run/client$it")
+                programArgs("--username", it.toString())
+            }
         }
     }
 }
@@ -58,6 +66,11 @@ dependencies {
         // World Map 1.41.3 embarque xaerolib 1.4.3 : la derniere (1.8.3) a retire des methodes et plante au lancement
         implementation("xaero.lib:xaerolib-fabric-26.2") { version { strictly("1.4.3") } }
     }
+
+    // Radar de la Minimap lu par RadarMinimap ; absent du jar, sans ses dependances (26.2 impose xaerolib 1.4.3)
+    modCompileOnly("xaero.minimap:xaerominimap-fabric-$mc:${v.minimap}") { isTransitive = false }
+    // -Pminimap : lance le jeu de test avec la Minimap
+    if (project.hasProperty("minimap")) modLocalRuntime("xaero.minimap:xaerominimap-fabric-$mc:${v.minimap}") { isTransitive = false }
 
     // Faux joueurs pour tester le multijoueur avec un seul client (/player Bob spawn), hors du jar publié
     modLocalRuntime("maven.modrinth:carpet:${v.carpet}")
