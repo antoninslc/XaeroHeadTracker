@@ -14,24 +14,24 @@ The mod must be installed on both the client and the server, since the server re
 
 ## Versions and branches
 
-One branch per loader and Minecraft version. Current release: **2.1.x**.
+One branch per loader and Minecraft version; Fabric builds all its versions from the single branch `v2/fabric/all` (Stonecutter). Current release: **2.3.0 (beta)**.
 
 | Loader | Minecraft | Branch | Version |
 |---|---|---|---|
-| Fabric | 1.21.1 | `v2/fabric/1.21.1` | 2.2.1 (beta) |
-| Fabric | 1.21.11 | `v2/fabric/1.21.11` | 2.2.1 (beta) |
-| Fabric | 26.2 | `v2/fabric/26.2` | 2.2.0 (beta) |
-| Fabric | 26.3 | `v2/fabric/26.3` | 2.2.0 (beta) |
-| NeoForge | 1.21.1 | `v2/neoforge/1.21.1` | 2.2.0 (beta) |
-| NeoForge | 26.3 | `v2/neoforge/26.3` | 2.2.0 (beta) |
-| Forge | 1.20.1 | `v2/forge/1.20.1` | 2.2.0 (beta) |
+| Fabric | 1.21.1 | `v2/fabric/all` | 2.3.0 (beta) |
+| Fabric | 1.21.11 | `v2/fabric/all` | 2.3.0 (beta) |
+| Fabric | 26.2 | `v2/fabric/all` | 2.3.0 (beta) |
+| Fabric | 26.3 | `v2/fabric/all` | 2.3.0 (beta) |
+| NeoForge | 1.21.1 | `v2/neoforge/1.21.1` | 2.3.0 (beta) |
+| NeoForge | 26.3 | `v2/neoforge/26.3` | 2.3.0 (beta) |
+| Forge | 1.20.1 | `v2/forge/1.20.1` | 2.3.0 (beta) |
 
-Jars for each release are attached to the [GitHub releases](../../releases), and tags are named `<version>+<loader>-<mc>`.
+Jars for each release are attached to the [GitHub releases](../../releases), with one tag per version (for example `2.3.0`).
 The 1.x versions are archived under the tags `v1/<loader>/<mc>`.
 
 ## Development
 
-Each branch is a standalone Gradle project (`./gradlew build`, `./gradlew runClient`). In the dev client, `/xht simulate live|disconnect|old|clear` fakes a second player on the map.
+Each branch is a standalone Gradle project (`./gradlew build`, `./gradlew runClient`); on `v2/fabric/all`, `./gradlew chiseledBuild` builds every Fabric version. In the dev client, `/xht simulate live|disconnect|old|clear` fakes a second player on the map.
 
 ## License
 
