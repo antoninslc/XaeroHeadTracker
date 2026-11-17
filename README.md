@@ -14,17 +14,17 @@ The mod must be installed on both the client and the server, since the server re
 
 ## Versions and branches
 
-One branch per loader and Minecraft version; Fabric builds all its versions from the single branch `v2/fabric/all` (Stonecutter). Current release: **2.3.0 (beta)**.
+One branch per loader and Minecraft version; Fabric builds all its versions from the single branch `v2/fabric/all` (Stonecutter). Current release: **2.3.0**.
 
 | Loader | Minecraft | Branch | Version |
 |---|---|---|---|
-| Fabric | 1.21.1 | `v2/fabric/all` | 2.3.0 (beta) |
-| Fabric | 1.21.11 | `v2/fabric/all` | 2.3.0 (beta) |
-| Fabric | 26.2 | `v2/fabric/all` | 2.3.0 (beta) |
-| Fabric | 26.3 | `v2/fabric/all` | 2.3.0 (beta) |
-| NeoForge | 1.21.1 | `v2/neoforge/1.21.1` | 2.3.0 (beta) |
-| NeoForge | 26.3 | `v2/neoforge/26.3` | 2.3.0 (beta) |
-| Forge | 1.20.1 | `v2/forge/1.20.1` | 2.3.0 (beta) |
+| Fabric | 1.21.1 | `v2/fabric/all` | 2.3.0 |
+| Fabric | 1.21.11 | `v2/fabric/all` | 2.3.0 |
+| Fabric | 26.2 | `v2/fabric/all` | 2.3.0 |
+| Fabric | 26.3 | `v2/fabric/all` | 2.3.0 |
+| NeoForge | 1.21.1 | `v2/neoforge/1.21.1` | 2.3.0 |
+| NeoForge | 26.3 | `v2/neoforge/26.3` | 2.3.0 |
+| Forge | 1.20.1 | `v2/forge/1.20.1` | 2.3.0 |
 
 Jars for each release are attached to the [GitHub releases](../../releases), with one tag per version (for example `2.3.0`).
 The 1.x versions are archived under the tags `v1/<loader>/<mc>`.
